@@ -1,0 +1,74 @@
+body { font-family: monospace; font-size: 14px; background-color: #000; color: #ccc; font-weight: normal; line-height: 16px;}
+a { color: #99c; text-decoration: none;}
+a:visited { color: #99c; }
+a:hover { color: #ddf; }
+a.down:hover { color: #fdd !important; }
+
+.tdalink { color: #113 !important; }
+.tdalink:hover { color: #558 !important; }
+.tdalink:visited { color:#113 !important; }
+
+select { 
+  background-color: #000; color: #8f8; font-family: monospace; font-size: 14px; border: 0px;
+  margin-bottom: 14px; outline: none; font-style: normal; font-weight: normal;
+}
+optgroup { font-size: 14px; color: #88f; font-style: normal; font-weight: normal; }
+option { color: #8f8; }
+.odd { background-color: #181818; }
+.even { background-color: #222222; }
+
+::-webkit-scrollbar {
+  width: 16px;
+  color: #fff;
+  border: 1px solid #484;
+  background-color: #242;
+}
+::-webkit-scrollbar-thumb {
+  color: #88f;
+  background-color: #484;
+  border: 1px solid: #fff;
+}
+
+#outercontainer { width: 928px; }
+
+#headercontainer { background-color:#0cc; color:#000; margin-bottom:8px; padding-bottom: 1px; }
+
+#modtitle { white-space: pre; color: #fff; }
+#modinfo { color: #aaa; }
+#modtimer { color: #99b; }      
+
+#modsamples { white-space:pre; float:right; margin-left:12px; color: #888 }
+
+#modpattern { white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; }
+
+#infotext { margin-top: 16px; color: #aae; }
+
+#load_song { float:right; }
+
+#modfile { float:left; width: 480px; }
+#fileinfo { width: 360px; float:left; margin-left: 12px; margin-top: 16px; }
+
+.hl { color: #fff; }
+.down { color: #faa !important; }
+
+.note { color: #88f; }
+.sample { color: #8ff; }
+.command { color: #8f8; }
+
+.samplelist { background-color: #000; color: #778; }
+.activesample { background-color: #135; color: #fff; }
+
+.currentrow { background-color: #335; }
+
+.filesize { color: #444; }
+
+.patterndata {
+  height: 24.0em;
+  margin-top: 0px;
+  overflow: hidden;
+  display: none;
+}
+
+.currentpattern {
+  display: inline-block !important;
+}
