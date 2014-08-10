@@ -14,8 +14,18 @@
   http://opensource.org/licenses/MIT
 
   kinda sorta changelog:
+  (aug 2014)
+  - a few bugfixes, thanks spot^uprough and esau^traktor for reporting
+    * fixed bug in slide-to-note when 300 with no preceeding 3xy
+    * fixed vibrato depth on ticks 1+ to match tick 0
+    * added boolean variable for disabling A500 fixed lowpass filter
+    * added single-buffer delay on module start
+    * fixed sample loop discarding pointer overflow
+  (may 2014)
+  - added boolean variable for the amiga led filter for ui stuff
   (jan 2014)
-  - disabled ee0 filter command for tracks with over 4 channels
+  - disabled ee0 filter command for tracks with over 4 channels to
+    make mod.dope play correctly
   (oct 2013)
   - added support for firefox 24
   (apr 2013)
@@ -37,9 +47,8 @@
   - first version written from scratch
 
   todo:
-  - safari on ipad is broken again, it seems
-  - fix more playback bugs
-    * mod.black_queen (pattern loop has glitches)
+  - pattern looping is way broken in mod.black_queen
+  - i think mod.a_rambo_rules doesn't play right, either?
   - properly test EEx delay pattern
   - implement the rest of the effects
   - optimize for more speed!! SPEEEED!!
@@ -63,8 +72,10 @@ function Protracker()
   this.paused=false;
   this.repeat=false;
   this.separation=true;
+  this.filter=false;
 
   this.palclock=true;
+  this.amiga500=true;
   
   this.autostart=false;
 
@@ -136,13 +147,16 @@ Protracker.prototype.createContext = function()
   this.samplerate=this.context.sampleRate;
   this.bufferlen=(this.samplerate > 44100) ? 4096 : 2048; 
 
-  // fixed filter at 6kHz
-  this.filterNode=this.context.createBiquadFilter();
-  this.filterNode.frequency.value=6000
+  // Amiga 500 fixed filter at 6kHz
+  if (this.amiga500) {
+    this.filterNode=this.context.createBiquadFilter();
+    this.filterNode.frequency.value=6000
+  }
 
   // "LED filter" at 3.5kHz - off by default
   this.lowpassNode=this.context.createBiquadFilter();
   this.lowpassNode.frequency.value=28867;
+  this.filter=false;
 
   // mixer
   if ( typeof this.context.createJavaScriptNode === 'function') {
@@ -153,12 +167,16 @@ Protracker.prototype.createContext = function()
   this.mixerNode.module=this;
   this.mixerNode.onaudioprocess=Protracker.prototype.mix;
 
-  // compressor for a bit of volume boost
+  // compressor for a bit of volume boost, helps with multich tunes
   this.compressorNode=this.context.createDynamicsCompressor();
 
   // patch up some cables :)  
-  this.mixerNode.connect(this.filterNode);
-  this.filterNode.connect(this.lowpassNode);
+  if (this.amiga500) {
+    this.mixerNode.connect(this.filterNode);
+    this.filterNode.connect(this.lowpassNode);
+  } else {
+    this.mixerNode.connect(this.lowpassNode);
+  }
   this.lowpassNode.connect(this.compressorNode);
   this.compressorNode.connect(this.context.destination);
 }
@@ -292,6 +310,8 @@ Protracker.prototype.clearsong = function()
 // initialize all player variables
 Protracker.prototype.initialize = function()
 {
+  this.delayfirst=false;
+
   this.tick=0;
   this.position=0;
   this.row=0;
@@ -350,6 +370,7 @@ Protracker.prototype.load = function(url)
     request.onload = function() {
         asset.buffer=new Uint8Array(request.response);
         asset.parse();
+        asset.delayfirst=true;
         if (asset.autostart) asset.play();
     }
     request.send();  
@@ -461,7 +482,10 @@ Protracker.prototype.parse = function()
   this.loading=false;
   this.buffer=0;
 
-  if (this.context) this.lowpassNode.frequency.value=28867;
+  if (this.context) {
+    this.lowpassNode.frequency.value=28867;
+    this.filter=false;
+  }
 
   this.onReady();
   return true;
@@ -541,7 +565,7 @@ Protracker.prototype.mix = function(ape) {
     outp[0]=0.0;
     outp[1]=0.0;
 
-    if (!mod.paused && mod.playing)
+    if (!mod.paused && mod.playing && !mod.delayfirst)
     {
       mod.advance(mod);
 
@@ -565,9 +589,9 @@ Protracker.prototype.mix = function(ape) {
                 if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
                 mod.channel[ch].flags|=3; // recalc speed
                 mod.channel[ch].noteon=1;
-              } else {
-                mod.channel[ch].slideto=n;
               }
+              // in either case, set the slide to note target
+              mod.channel[ch].slideto=n;
             }
             nn=mod.pattern[p][pp+0]&0xf0 | mod.pattern[p][pp+2]>>4;
             if (nn) {
@@ -628,7 +652,8 @@ Protracker.prototype.mix = function(ape) {
         if (mod.channel[ch].noteon) {
           if (mod.sample[mod.channel[ch].sample].loopstart || mod.sample[mod.channel[ch].sample].looplength) {
             if (mod.channel[ch].samplepos >= (mod.sample[mod.channel[ch].sample].loopstart+mod.sample[mod.channel[ch].sample].looplength)) {
-              mod.channel[ch].samplepos=mod.sample[mod.channel[ch].sample].loopstart;
+//              mod.channel[ch].samplepos=mod.sample[mod.channel[ch].sample].loopstart;
+              mod.channel[ch].samplepos-=mod.sample[mod.channel[ch].sample].looplength;
             }
           } else {
             if (mod.channel[ch].samplepos >= mod.sample[mod.channel[ch].sample].length) {
@@ -643,6 +668,7 @@ Protracker.prototype.mix = function(ape) {
       mod.offset++;
       mod.flags&=0x70;      
     }
+    mod.delayfirst=false;
     
     // a more headphone-friendly stereo separation (aka. betterpaula)
     if (mod.separation) {
@@ -727,9 +753,11 @@ Protracker.prototype.effect_t0_f=function(mod, ch) { // f set speed
 Protracker.prototype.effect_t0_e0=function(mod, ch) { // e0 filter on/off
   if (mod.channels > 4) return; // use only for 4ch amiga tunes
   if (mod.channel[ch].data&0x0f) {
-    mod.lowpassNode.frequency.value=4280; //3500;
+    mod.lowpassNode.frequency.value=4280; // 3500Hz is "historical", i guess?
+    mod.filter=true;
   } else {
     mod.lowpassNode.frequency.value=28867;
+    mod.filter=false;
   }
 }
 Protracker.prototype.effect_t0_e1=function(mod, ch) { // e1 fine slide up
@@ -844,7 +872,7 @@ Protracker.prototype.effect_t1_3=function(mod, ch) { // 3 slide to note
 }
 Protracker.prototype.effect_t1_4=function(mod, ch) { // 4 vibrato
   mod.channel[ch].voiceperiod+=
-    (mod.channel[ch].vibratodepth/16)*mod.channel[ch].semitone*(mod.vibratotable[mod.channel[ch].vibratowave&3][mod.channel[ch].vibratopos]/127);
+    (mod.channel[ch].vibratodepth/32)*mod.channel[ch].semitone*(mod.vibratotable[mod.channel[ch].vibratowave&3][mod.channel[ch].vibratopos]/127);
   mod.channel[ch].flags|=1;
 }
 Protracker.prototype.effect_t1_5=function(mod, ch) { // 5 volslide + slide to note

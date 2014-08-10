@@ -1,6 +1,6 @@
 /*
   user interface stuff for the web audio module player
-  (c) 2012-2013 firehawk/tda
+  (c) 2012-2014 firehawk/tda
 */
 var notelist=new Array("C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-");
 
@@ -48,8 +48,13 @@ $(document).ready(function() {
     $("#modinfo").html("");
     $("#modinfo").append("('"+this.signature+"')");
     var s=$("#modfile").val().split("/");
-    $("title").html(s[3]+" - Protracker module player for Web Audio");
-    window.history.pushState("object of string", "Title", "/"+s[2]+"/"+s[3]);
+    if (s.length > 3) {
+      $("title").html(s[3]+" - Protracker module player for Web Audio");
+      window.history.pushState("object of string", "Title", "/"+s[2]+"/"+s[3]);
+    } else {
+      $("title").html(s[2]+" - Protracker module player for Web Audio");
+      window.history.pushState("object of string", "Title", "/"+s[2]);
+    }
     
     var pdata="";
     for(p=0;p<this.patterns;p++) {
@@ -88,7 +93,8 @@ $(document).ready(function() {
         "pos <span class=\"hl\">"+hb(mod.position)+"</span>/<span class=\"hl\">"+hb(mod.songlen)+"</span> "+
         "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">3f</span> "+
         "speed <span class=\"hl\">"+mod.speed+"</span> "+
-        "bpm <span class=\"hl\">"+mod.bpm+"</span>"+
+        "bpm <span class=\"hl\">"+mod.bpm+"</span> "+
+        "filter <span class=\"hl\">"+(mod.filter ? "on" : "off")+"</span>"+
         "</span>");
 
       $("#modsamples").children().removeClass("activesample");
@@ -113,7 +119,7 @@ $(document).ready(function() {
     $("#modtimer").html("stopped");
     $("#modsamples").children().removeClass("activesample");
     $("#modchannels").html("");
-    $("#modpattern").html("");    
+    $(".currentpattern").removeClass("currentpattern");
     $("#play").html("[play]");
   };
 

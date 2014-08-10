@@ -40,7 +40,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
     <div id="outercontainer">
       <div id="headercontainer">
         <div style="margin-left:8px;float:left">Protracker module player for Web Audio</div>
-        <div style="margin-right:8px;float:right">(c) 2012-2013 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
+        <div style="margin-right:8px;float:right">(c) 2012-2014 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
         <div style="clear:both;"></div>
       </div>
       <div id="innercontainer">
