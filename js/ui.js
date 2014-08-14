@@ -183,7 +183,7 @@ $(document).ready(function() {
       $("#modamiga").html("[A500]");
       module.setamigamodel("500");
     } else {
-      $("#modamiga").html("[A12k]");    
+      $("#modamiga").html("[1200]");
       module.setamigamodel("1200");      
     }  
   });
