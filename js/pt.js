@@ -155,7 +155,8 @@ Protracker.prototype.createContext = function()
   this.samplerate=this.context.sampleRate;
   this.bufferlen=(this.samplerate > 44100) ? 4096 : 2048; 
 
-  // Amiga 500 fixed filter at 6kHz
+  // Amiga 500 fixed filter at 6kHz. WebAudio lowpass is 12dB/oct, whereas
+  // older Amigas had a 6dB/oct filter at 4900Hz. 
   this.filterNode=this.context.createBiquadFilter();
   if (this.amiga500) {
     this.filterNode.frequency.value=6000;
@@ -163,7 +164,7 @@ Protracker.prototype.createContext = function()
     this.filterNode.frequency.value=28867;
   }
 
-  // "LED filter" at 3.5kHz - off by default
+  // "LED filter" at 3275kHz - off by default
   this.lowpassNode=this.context.createBiquadFilter();
   this.lowpassNode.frequency.value=28867;
   this.filter=false;
@@ -800,7 +801,7 @@ Protracker.prototype.effect_t0_f=function(mod, ch) { // f set speed
 Protracker.prototype.effect_t0_e0=function(mod, ch) { // e0 filter on/off
   if (mod.channels > 4) return; // use only for 4ch amiga tunes
   if (mod.channel[ch].data&0x0f) {
-    mod.lowpassNode.frequency.value=4280; // 3500Hz is "historical", i guess?
+    mod.lowpassNode.frequency.value=3275;
     mod.filter=true;
   } else {
     mod.lowpassNode.frequency.value=28867;
