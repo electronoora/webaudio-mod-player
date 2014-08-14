@@ -15,6 +15,7 @@
 
   kinda sorta changelog:
   (aug 2014)
+  - three stereo separation modes now, 0=amiga, 1=65/35, 2=mono
   - a few bugfixes, thanks spot^uprough and esau^traktor for reporting
     * fixed bug in slide-to-note when 300 with no preceeding 3xy
     * fixed vibrato depth on ticks 1+ to match tick 0
@@ -71,9 +72,9 @@ function Protracker()
   this.mixerNode=0;
   this.paused=false;
   this.repeat=false;
-  this.separation=true;
   this.filter=false;
 
+  this.separation=1;
   this.palclock=true;
   this.amiga500=true;
   
@@ -245,7 +246,7 @@ Protracker.prototype.setrepeat = function(rep)
 
 
 
-// set stereo separation mode (false=paula, true=betterpaula)
+// set stereo separation mode (0=paula, 1=betterpaula (60/40), 2=mono)
 Protracker.prototype.setseparation = function(sep)
 {
   this.separation=sep;
@@ -673,8 +674,13 @@ Protracker.prototype.mix = function(ape) {
     // a more headphone-friendly stereo separation (aka. betterpaula)
     if (mod.separation) {
       t=outp[0];
-      outp[0]=outp[0]*0.6 + outp[1]*0.4;
-      outp[1]=outp[1]*0.6 + t*0.4;
+      if (mod.separation==2) {
+        outp[0]=outp[0]*0.5 + outp[1]*0.5;
+        outp[1]=outp[1]*0.5 + t*0.5;
+      } else {
+        outp[0]=outp[0]*0.65 + outp[1]*0.35;
+        outp[1]=outp[1]*0.65 + t*0.35;
+      }
     }
     bufs[0][s]=outp[0];
     bufs[1][s]=outp[1];

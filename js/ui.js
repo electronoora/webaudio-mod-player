@@ -155,13 +155,24 @@ $(document).ready(function() {
   });
   
   $("#modpaula").click(function() {
-    $("#modpaula").toggleClass("down");
     if ($("#modpaula").hasClass("down")) {
-      $("#modpaula").html("[)oo(]");
-      module.setseparation(true);
+      if ($("#modpaula").hasClass("stereo")) {
+        $("#modpaula").toggleClass("stereo");        
+        $("#modpaula").toggleClass("down");
+        // mono
+        $("#modpaula").html("[mono]");    
+        module.setseparation(2);
+      } else {
+        $("#modpaula").toggleClass("stereo");
+        // amiga 100% stereo
+        $("#modpaula").html("[))((]");
+        module.setseparation(0);
+      }
     } else {
-      $("#modpaula").html("[))((]");    
-      module.setseparation(false);
+      $("#modpaula").toggleClass("down");
+      // "betterpaula" 65/35 stereo
+      $("#modpaula").html("[)oo(]");
+      module.setseparation(1);
     }
     return false;
   });
