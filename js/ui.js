@@ -176,6 +176,17 @@ $(document).ready(function() {
     }
     return false;
   });
+  
+  $("#modamiga").click(function() {
+    $("#modamiga").toggleClass("down");
+    if ($("#modamiga").hasClass("down")) {
+      $("#modamiga").html("[A500]");
+      module.setamigamodel("500");
+    } else {
+      $("#modamiga").html("[A12k]");    
+      module.setamigamodel("1200");      
+    }  
+  });
 
   $("#modclock").click(function() {
     $("#modclock").toggleClass("down");

@@ -149,9 +149,11 @@ Protracker.prototype.createContext = function()
   this.bufferlen=(this.samplerate > 44100) ? 4096 : 2048; 
 
   // Amiga 500 fixed filter at 6kHz
+  this.filterNode=this.context.createBiquadFilter();
   if (this.amiga500) {
-    this.filterNode=this.context.createBiquadFilter();
-    this.filterNode.frequency.value=6000
+    this.filterNode.frequency.value=6000;
+  } else {
+    this.filterNode.frequency.value=28867;
   }
 
   // "LED filter" at 3.5kHz - off by default
@@ -172,12 +174,8 @@ Protracker.prototype.createContext = function()
   this.compressorNode=this.context.createDynamicsCompressor();
 
   // patch up some cables :)  
-  if (this.amiga500) {
-    this.mixerNode.connect(this.filterNode);
-    this.filterNode.connect(this.lowpassNode);
-  } else {
-    this.mixerNode.connect(this.lowpassNode);
-  }
+  this.mixerNode.connect(this.filterNode);
+  this.filterNode.connect(this.lowpassNode);
   this.lowpassNode.connect(this.compressorNode);
   this.compressorNode.connect(this.context.destination);
 }
@@ -268,6 +266,17 @@ Protracker.prototype.setautostart = function(st)
   this.autostart=st;
 }
 
+
+
+// set amiga model - changes fixed filter state
+Protracker.prototype.setamigamodel = function(amiga)
+{
+  if (amiga=="600" || amiga=="1200" || amiga=="4000") {
+    this.filterNode.frequency.value=28867;
+  } else {
+    this.filterNode.frequency.value=6000;
+  }
+}
 
 
 // clear song data
