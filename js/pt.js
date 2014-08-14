@@ -15,6 +15,8 @@
 
   kinda sorta changelog:
   (aug 2014)
+  - added sync event queue for E8x commands
+  - changed the amiga fixed filter model to allow changes at runtime
   - three stereo separation modes now, 0=amiga, 1=65/35, 2=mono
   - a few bugfixes, thanks spot^uprough and esau^traktor for reporting
     * fixed bug in slide-to-note when 300 with no preceeding 3xy
@@ -79,6 +81,8 @@ function Protracker()
   this.amiga500=true;
   
   this.autostart=false;
+
+  this.syncqueue=[];
 
   this.onReady=function(){};
   this.onPlay=function(){};
@@ -279,6 +283,23 @@ Protracker.prototype.setamigamodel = function(amiga)
 }
 
 
+
+// are there E8x sync events queued?
+Protracker.prototype.hassyncevents = function()
+{
+  return (this.syncqueue.length != 0);
+}
+
+
+
+// pop oldest sync event nybble from the FIFO queue
+Protracker.prototype.popsyncevent = function()
+{
+  return this.syncqueue.pop();
+}
+
+
+
 // clear song data
 Protracker.prototype.clearsong = function()
 {  
@@ -314,6 +335,8 @@ Protracker.prototype.clearsong = function()
   
   this.patterndelay=0;
   this.patternwait=0;
+  
+  this.syncqueue=[];
 }
 
 
@@ -321,6 +344,8 @@ Protracker.prototype.clearsong = function()
 Protracker.prototype.initialize = function()
 {
   this.delayfirst=false;
+
+  this.syncqueue=[];
 
   this.tick=0;
   this.position=0;
@@ -900,7 +925,8 @@ Protracker.prototype.effect_t1_6=function(mod, ch) { // 6 volslide + vibrato
 }
 Protracker.prototype.effect_t1_7=function(mod, ch) { // 7
 }
-Protracker.prototype.effect_t1_8=function(mod, ch) { // 8
+Protracker.prototype.effect_t1_8=function(mod, ch) { // 8 unused, use for syncing
+  mod.syncqueue.unshift(mod.channel[ch].data&0x0f);
 }
 Protracker.prototype.effect_t1_9=function(mod, ch) { // 9 set sample offset
 }
