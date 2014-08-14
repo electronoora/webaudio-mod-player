@@ -22,7 +22,7 @@
     * fixed bug in slide-to-note when 300 with no preceeding 3xy
     * fixed vibrato depth on ticks 1+ to match tick 0
     * added boolean variable for disabling A500 fixed lowpass filter
-    * added single-buffer delay on module start
+    * added a delay on module start, number of buffers selectable
     * fixed sample loop discarding pointer overflow
   (may 2014)
   - added boolean variable for the amiga led filter for ui stuff
@@ -81,6 +81,9 @@ function Protracker()
   this.amiga500=true;
   
   this.autostart=false;
+  this.bufferstodelay=4; // adjust this if you get stutter after loading new song
+  this.delayfirst=0;
+  this.delayload=0;
 
   this.syncqueue=[];
 
@@ -201,6 +204,7 @@ Protracker.prototype.play = function()
   this.flags=1+2;
   this.playing=true;
   this.onPlay();
+  this.delayfirst=this.bufferstodelay;
   return true;
 }
 
@@ -223,6 +227,7 @@ Protracker.prototype.stop = function()
 {
   this.playing=false;
   this.onStop();
+  this.delayload=1;
 }
 
 
@@ -345,8 +350,6 @@ Protracker.prototype.clearsong = function()
 // initialize all player variables
 Protracker.prototype.initialize = function()
 {
-  this.delayfirst=false;
-
   this.syncqueue=[];
 
   this.tick=0;
@@ -395,6 +398,8 @@ Protracker.prototype.initialize = function()
 // load module from url into local buffer
 Protracker.prototype.load = function(url)
 {
+    
+
     this.url=url;
     this.clearsong();
     
@@ -407,7 +412,6 @@ Protracker.prototype.load = function(url)
     request.onload = function() {
         asset.buffer=new Uint8Array(request.response);
         asset.parse();
-        asset.delayfirst=true;
         if (asset.autostart) asset.play();
     }
     request.send();  
@@ -515,14 +519,15 @@ Protracker.prototype.parse = function()
     sst+=this.sample[i].length;
   }
 
-  this.ready=true;
-  this.loading=false;
-  this.buffer=0;
 
   if (this.context) {
     this.lowpassNode.frequency.value=28867;
     this.filter=false;
   }
+
+  this.ready=true;
+  this.loading=false;
+  this.buffer=0;
 
   this.onReady();
   return true;
@@ -602,7 +607,7 @@ Protracker.prototype.mix = function(ape) {
     outp[0]=0.0;
     outp[1]=0.0;
 
-    if (!mod.paused && mod.playing && !mod.delayfirst)
+    if (!mod.paused && mod.playing && mod.delayfirst==0)
     {
       mod.advance(mod);
 
@@ -689,7 +694,6 @@ Protracker.prototype.mix = function(ape) {
         if (mod.channel[ch].noteon) {
           if (mod.sample[mod.channel[ch].sample].loopstart || mod.sample[mod.channel[ch].sample].looplength) {
             if (mod.channel[ch].samplepos >= (mod.sample[mod.channel[ch].sample].loopstart+mod.sample[mod.channel[ch].sample].looplength)) {
-//              mod.channel[ch].samplepos=mod.sample[mod.channel[ch].sample].loopstart;
               mod.channel[ch].samplepos-=mod.sample[mod.channel[ch].sample].looplength;
             }
           } else {
@@ -705,7 +709,6 @@ Protracker.prototype.mix = function(ape) {
       mod.offset++;
       mod.flags&=0x70;      
     }
-    mod.delayfirst=false;
     
     // a more headphone-friendly stereo separation (aka. betterpaula)
     if (mod.separation) {
@@ -721,6 +724,8 @@ Protracker.prototype.mix = function(ape) {
     bufs[0][s]=outp[0];
     bufs[1][s]=outp[1];
   }
+  if (mod.delayfirst>0) mod.delayfirst--; //=false;
+  mod.delayload=0;
 }
 
 

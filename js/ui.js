@@ -290,10 +290,18 @@ $(document).ready(function() {
     } else {
       module.setautostart(false);
     }
-    $("#modtimer").html("loading");    
-    module.load($("#modfile").val());
+    $("#modtimer").html("loading");
+
     $("#loadercontainer").hide();
     $("#innercontainer").show();
+    
+    var loadInterval=setInterval(function(){
+      if (!module.delayload) {
+         module.load($("#modfile").val());      
+         clearInterval(loadInterval);
+      }
+    }, 200);
+    
     return false;
   });
   
