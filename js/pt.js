@@ -276,9 +276,11 @@ Protracker.prototype.setautostart = function(st)
 Protracker.prototype.setamigamodel = function(amiga)
 {
   if (amiga=="600" || amiga=="1200" || amiga=="4000") {
-    this.filterNode.frequency.value=28867;
+    this.amiga500=false;
+    if (this.filterNode) this.filterNode.frequency.value=28867;
   } else {
-    this.filterNode.frequency.value=6000;
+    this.amiga500=true;
+    if (this.filterNode) this.filterNode.frequency.value=6000;
   }
 }
 

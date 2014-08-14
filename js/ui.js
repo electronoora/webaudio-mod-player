@@ -39,6 +39,65 @@ $(document).ready(function() {
   var timer;
   var module=new Protracker();
   var oldpos=-1;
+  
+  if(typeof(Storage) !== "undefined") {
+    // read previous button states from localStorage
+    if (localStorage["modrepeat"]) {
+      if (localStorage["modrepeat"]=="true") {
+        $("#modrepeat").addClass("down");
+        module.setrepeat(true);
+      } else {
+        $("#modrepeat").removeClass("down");
+        module.setrepeat(false);      
+      }
+    }
+    if (localStorage["modamiga"]) {
+      if (localStorage["modamiga"]=="500") {
+        $("#modamiga").addClass("down");
+        $("#modamiga").html("[A500]");
+        module.setamigamodel("500");
+      } else {
+        $("#modamiga").removeClass("down");
+        $("#modamiga").html("[1200]");
+        module.setamigamodel("1200");
+      }
+    }
+    if (localStorage["modclock"]) {
+      if (localStorage["modclock"]=="PAL") {
+        $("#modclock").addClass("down");
+        $("#modclock").html("[&nbsp;PAL]");
+        module.setamigatype(true);
+      } else {
+        $("#modclock").removeClass("down");
+        $("#modclock").html("[NTSC]");
+        module.setamigatype(false);
+      }
+    }
+    if (localStorage["modpaula"]) {
+      switch (parseInt(localStorage["modpaula"])) {
+        case 0:
+        $("#modpaula").addClass("stereo");        
+        $("#modpaula").addClass("down");
+        $("#modpaula").html("[))((]");    
+        module.setseparation(0);
+        break;
+        
+        case 1:
+        $("#modpaula").removeClass("stereo");        
+        $("#modpaula").addClass("down");
+        $("#modpaula").html("[)oo(]");    
+        module.setseparation(1);        
+        break;
+        
+        case 2:
+        $("#modpaula").removeClass("stereo");        
+        $("#modpaula").removeClass("down");
+        $("#modpaula").html("[mono]");    
+        module.setseparation(2);        
+        break;
+      }
+    }
+  }
 
   module.onReady=function() {  
     $("#modtitle").html(pad(this.title, 20));
@@ -151,6 +210,7 @@ $(document).ready(function() {
   $("#modrepeat").click(function(){
     $("#modrepeat").toggleClass("down");
     module.setrepeat($("#modrepeat").hasClass("down"));
+    if(typeof(Storage) !== "undefined") localStorage.setItem("modrepeat", $("#modrepeat").hasClass("down"));
     return false;
   });
   
@@ -162,17 +222,20 @@ $(document).ready(function() {
         // mono
         $("#modpaula").html("[mono]");    
         module.setseparation(2);
+        if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 2);
       } else {
         $("#modpaula").toggleClass("stereo");
         // amiga 100% stereo
         $("#modpaula").html("[))((]");
         module.setseparation(0);
+        if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 0);
       }
     } else {
       $("#modpaula").toggleClass("down");
       // "betterpaula" 65/35 stereo
       $("#modpaula").html("[)oo(]");
       module.setseparation(1);
+      if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 1);
     }
     return false;
   });
@@ -182,9 +245,11 @@ $(document).ready(function() {
     if ($("#modamiga").hasClass("down")) {
       $("#modamiga").html("[A500]");
       module.setamigamodel("500");
+      if(typeof(Storage) !== "undefined") localStorage.setItem("modamiga", "500");
     } else {
-      $("#modamiga").html("[1200]");
+      $("#modamiga").html("[1200]");    
       module.setamigamodel("1200");      
+      if(typeof(Storage) !== "undefined") localStorage.setItem("modamiga", "1200");
     }  
   });
 
@@ -193,9 +258,11 @@ $(document).ready(function() {
     if ($("#modclock").hasClass("down")) {
       $("#modclock").html("[&nbsp;PAL]");
       module.setamigatype(true);
+      if(typeof(Storage) !== "undefined") localStorage.setItem("modclock", "PAL");
     } else {
       $("#modclock").html("[NTSC]");    
       module.setamigatype(false);      
+      if(typeof(Storage) !== "undefined") localStorage.setItem("modclock", "NTSC");
     }
     return false;
   });
