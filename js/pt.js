@@ -14,6 +14,9 @@
   http://opensource.org/licenses/MIT
 
   kinda sorta changelog:
+  (sep 2014)
+  - fixed bug with E8x sync and added 80x to also function for sync
+    events due to problems with some protracker versions (thanks spot)
   (aug 2014)
   - added sync event queue for E8x commands
   - changed the amiga fixed filter model to allow changes at runtime
@@ -51,7 +54,6 @@
 
   todo:
   - pattern looping is way broken in mod.black_queen
-  - i think mod.a_rambo_rules doesn't play right, either?
   - properly test EEx delay pattern
   - implement the rest of the effects
   - optimize for more speed!! SPEEEED!!
@@ -90,6 +92,10 @@ function Protracker()
   this.onReady=function(){};
   this.onPlay=function(){};
   this.onStop=function(){};
+
+  this.context = null;
+  this.samplerate=44100;
+  this.bufferlen=2048;
 
   // paula period values
   this.baseperiodtable=new Array(
@@ -137,9 +143,7 @@ function Protracker()
     this.effect_t1_e0, this.effect_t1_e1, this.effect_t1_e2, this.effect_t1_e3, this.effect_t1_e4, this.effect_t1_e5, this.effect_t1_e6, this.effect_t1_e7,
     this.effect_t1_e8, this.effect_t1_e9, this.effect_t1_ea, this.effect_t1_eb, this.effect_t1_ec, this.effect_t1_ed, this.effect_t1_ee, this.effect_t1_ef);
 
-  this.context = null;
-  this.samplerate=44100;
-  this.bufferlen=2048;
+
 }
 
 
@@ -520,7 +524,6 @@ Protracker.prototype.parse = function()
     sst+=this.sample[i].length;
   }
 
-
   if (this.context) {
     this.lowpassNode.frequency.value=28867;
     this.filter=false;
@@ -761,7 +764,8 @@ Protracker.prototype.effect_t0_6=function(mod, ch) { // 6
 }
 Protracker.prototype.effect_t0_7=function(mod, ch) { // 7
 }
-Protracker.prototype.effect_t0_8=function(mod, ch) { // 8
+Protracker.prototype.effect_t0_8=function(mod, ch) { // 8 unused, used for syncing
+  mod.syncqueue.unshift(mod.channel[ch].data&0x0f);
 }
 Protracker.prototype.effect_t0_9=function(mod, ch) { // 9 set sample offset
   mod.channel[ch].samplepos=mod.channel[ch].data*256;
@@ -838,7 +842,8 @@ Protracker.prototype.effect_t0_e6=function(mod, ch) { // e6 loop pattern
 }
 Protracker.prototype.effect_t0_e7=function(mod, ch) { // e7
 }
-Protracker.prototype.effect_t0_e8=function(mod, ch) { // e8
+Protracker.prototype.effect_t0_e8=function(mod, ch) { // e8, use for syncing
+  mod.syncqueue.unshift(mod.channel[ch].data&0x0f);
 }
 Protracker.prototype.effect_t0_e9=function(mod, ch) { // e9
 }
@@ -933,8 +938,8 @@ Protracker.prototype.effect_t1_6=function(mod, ch) { // 6 volslide + vibrato
 }
 Protracker.prototype.effect_t1_7=function(mod, ch) { // 7
 }
-Protracker.prototype.effect_t1_8=function(mod, ch) { // 8 unused, use for syncing
-  mod.syncqueue.unshift(mod.channel[ch].data&0x0f);
+Protracker.prototype.effect_t1_8=function(mod, ch) { // 8 unused
+
 }
 Protracker.prototype.effect_t1_9=function(mod, ch) { // 9 set sample offset
 }
