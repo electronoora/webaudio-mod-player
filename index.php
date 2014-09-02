@@ -118,8 +118,6 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
         
         <div style="clear:both"></div>
 <!--        <br/><br/>Choose a song from the listbox and click 'load song' or doubleclick song to open it into the player. -->
-        <br/>Playlist functionality is not yet complete.
-        
       </div>
       
       

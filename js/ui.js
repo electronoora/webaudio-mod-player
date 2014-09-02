@@ -496,6 +496,7 @@ $(document).ready(function() {
     }
     return false;
   });
+  
   $("#prev_track").click(function(){
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
@@ -510,6 +511,20 @@ $(document).ready(function() {
       playFromPlaylist(module, module.playing);
     }
     return false;
+  });
+  
+  $(document).keypress(function(ev){
+    if (ev.keyCode==32) {
+      if ($("#innercontainer").is(":visible")) {
+        if (module.playing) {
+          $("#pause").click();
+        } else {
+          $("#play").click();
+        }
+        event.preventDefault();
+        return false;
+      }
+    }
   });
     
 });
