@@ -179,11 +179,11 @@ $(document).ready(function() {
     
     var pdata="";
     for(p=0;p<this.patterns;p++) {
-      var pp, pd="<div class=\"patterndata pattern"+hb(p)+"\">";
+      var pp, pd="<div class=\"patterndata\" id=\"pattern"+hb(p)+"\">";
       for(i=0; i<12; i++) pd+="\n";
       for(i=0; i<64; i++) {
         pp=i*4*this.channels;
-        pd+="<span class=\"patternrow\">"+hb(i)+"|";
+        pd+="<span class=\"patternrow\" id=\"pattern"+hb(p)+"_row"+hb(i)+"\">"+hb(i)+"|";
         for(c=0;c<this.channels;c++) {
           pd+=notef(this.note[p][i*this.channels+c], (this.pattern[p][pp+0]&0xf0 | this.pattern[p][pp+2]>>4), this.pattern[p][pp+2]&0x0f, this.pattern[p][pp+3], this.channels);
           pp+=4;
@@ -193,46 +193,43 @@ $(document).ready(function() {
       for(i=0; i<24; i++) pd+="\n";
       pdata+=pd+"</div>";
     }
-    if (!mobileSafari) {
-      $("#modpattern").html(pdata);
-    } else {
-      $("#modpattern").html("(Pattern display is disabled on iOS)");
-    }
+    $("#modpattern").html(pdata);
     
     $("#modtimer").html("ready");
   };
 
   module.onPlay=function() {
-    oldpos=-1;
+    var oldpos=-1, oldrow=-1;
     $("#play").html("[stop]");
     timer=setInterval(function(){
       var i,c;
       var mod=module;
       if (mod.paused) return;
 
-      $("#modtimer").replaceWith("<span id=\"modtimer\">"+
-        "pos <span class=\"hl\">"+hb(mod.position)+"</span>/<span class=\"hl\">"+hb(mod.songlen)+"</span> "+
-        "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">3f</span> "+
-        "speed <span class=\"hl\">"+mod.speed+"</span> "+
-        "bpm <span class=\"hl\">"+mod.bpm+"</span> "+
-        "filter <span class=\"hl\">"+(mod.filter ? "on" : "off")+"</span>"+
-        "</span>");
-
-      $("#modsamples").children().removeClass("activesample");
-      for(c=0;c<mod.channels;c++)
-        if (mod.channel[c].noteon) $("span#sample"+hb(mod.channel[c].sample+1)).addClass("activesample");
-
-      if (!mobileSafari) {
-        if (oldpos != mod.position) {
-          $(".currentpattern").removeClass("currentpattern");
-          $(".pattern"+hb(mod.patterntable[mod.position])).addClass("currentpattern");
-        }
-        oldpos=mod.position;
-        $(".currentrow").removeClass("currentrow");
-        $(".currentpattern .patternrow:eq("+mod.row+")").addClass("currentrow");
-        $(".currentpattern").scrollTop( mod.row * 16);
+      if (oldpos != mod.position) {
+        if (oldpos>=0) $("#pattern"+hb(mod.patterntable[oldpos])).removeClass("currentpattern");
+        $("#pattern"+hb(mod.patterntable[mod.position])).addClass("currentpattern");
       }
-    }, 40.0);
+      if (oldrow != mod.row) {
+        $("#modtimer").replaceWith("<span id=\"modtimer\">"+
+          "pos <span class=\"hl\">"+hb(mod.position)+"</span>/<span class=\"hl\">"+hb(mod.songlen)+"</span> "+
+          "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">3f</span> "+
+          "speed <span class=\"hl\">"+mod.speed+"</span> "+
+          "bpm <span class=\"hl\">"+mod.bpm+"</span> "+
+          "filter <span class=\"hl\">"+(mod.filter ? "on" : "off")+"</span>"+
+          "</span>");
+
+        $("#modsamples").children().removeClass("activesample");      
+        for(c=0;c<mod.channels;c++)
+          if (mod.channel[c].noteon) $("span#sample"+hb(mod.channel[c].sample+1)).addClass("activesample");
+          
+        if (oldpos>=0 && oldrow>=0) $("#pattern"+hb(mod.patterntable[oldpos])+"_row"+hb(oldrow)).removeClass("currentrow");
+        $("#pattern"+hb(mod.patterntable[mod.position])+"_row"+hb(mod.row)).addClass("currentrow");
+        $("#pattern"+hb(mod.patterntable[mod.position])).scrollTop(mod.row*16);
+      }
+      oldpos=mod.position;        
+      oldrow=mod.row;
+    }, (mobileSafari ? 80.0 : 40.0) ); // half display update speed for iOS
   };
 
   module.onStop=function() {

@@ -22,7 +22,7 @@
     <title>Protracker module player for Web Audio</title>
     <meta name="description" content="A Protracker/Fasttracker module player in Javascript using the Web Audio API. Supports Chrome 14+ and Safari 6.">
     <link rel="stylesheet" href="/style.css" type="text/css" media="screen" />
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+    <script src="http://code.jquery.com/jquery-2.1.1.js"></script>
 <?php
 $browserAsString = $_SERVER['HTTP_USER_AGENT'];
 if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobile/"))
