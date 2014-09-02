@@ -68,6 +68,7 @@ function refreshStoredPlaylist()
 
 function playFromPlaylist(module, autostart)
 {
+  module.stopaudio();
   module.setautostart(autostart);
   $("#modtimer").html("loading");
   var loadInterval=setInterval(function(){
@@ -221,7 +222,7 @@ $(document).ready(function() {
 
         $("#modsamples").children().removeClass("activesample");      
         for(c=0;c<mod.channels;c++)
-          if (mod.channel[c].noteon) $("span#sample"+hb(mod.channel[c].sample+1)).addClass("activesample");
+          if (mod.channel[c].noteon) $("#sample"+hb(mod.channel[c].sample+1)).addClass("activesample");
           
         if (oldpos>=0 && oldrow>=0) $("#pattern"+hb(mod.patterntable[oldpos])+"_row"+hb(oldrow)).removeClass("currentrow");
         $("#pattern"+hb(mod.patterntable[mod.position])+"_row"+hb(mod.row)).addClass("currentrow");

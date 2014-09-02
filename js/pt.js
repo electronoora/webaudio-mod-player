@@ -204,6 +204,7 @@ Protracker.prototype.play = function()
     this.paused=false;
     return true;
   }
+  this.endofsong=false;
   this.paused=false;
   this.initialize();
   this.flags=1+2;
@@ -227,12 +228,20 @@ Protracker.prototype.pause = function()
 
 
 
-// stop playback and release webaudio node
+// stop playback
 Protracker.prototype.stop = function()
 {
   this.playing=false;
   this.onStop();
   this.delayload=1;
+}
+
+
+
+// stop playing but don't call callbacks
+Protracker.prototype.stopaudio = function(st)
+{
+  this.playing=st;
 }
 
 
@@ -279,6 +288,8 @@ Protracker.prototype.setautostart = function(st)
 {
   this.autostart=st;
 }
+
+
 
 
 
@@ -369,6 +380,7 @@ Protracker.prototype.initialize = function()
   this.patternjump=0;
   this.patterndelay=0;
   this.patternwait=0;
+  this.endofsong=false;
   
   this.channel=new Array();
   for(i=0;i<this.channels;i++) {
@@ -403,7 +415,7 @@ Protracker.prototype.initialize = function()
 // load module from url into local buffer
 Protracker.prototype.load = function(url)
 {
-    
+    this.playing=false; // a precaution
 
     this.url=url;
     this.clearsong();
@@ -584,6 +596,7 @@ Protracker.prototype.advance=function(mod) {
     if (mod.repeat) {
       mod.position=0;
     } else {
+      this.endofsong=true;
       mod.stop();
     }
     return;
