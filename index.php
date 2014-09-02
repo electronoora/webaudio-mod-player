@@ -34,7 +34,6 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
 ?>    
     <script type="text/javascript" src="/js/pt.js"></script>
     <script type="text/javascript" src="/js/ui.js"></script>
-
   </head>
   <body>
     <div id="outercontainer">
@@ -50,10 +49,12 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
           <span id="modinfo"></span>
           <span id="modtimer"></span>
           <br/><br/>
+          <a class="inactive" href="#" id="prev_track">[|&lt;]</a>
           <a href="#" id="go_back">[&lt;&lt;]</a>
           <a href="#" id="play">[play]</a>
           <a href="#" id="pause">[pause]</a>
           <a href="#" id="go_fwd">[&gt;&gt;]</a>
+          <a class="inactive" href="#" id="next_track">[&gt;|]</a>
           <span style="white-space:pre;">     </span>
           <a href="#" title="Repeat song" id="modrepeat">[rept]</a>
           <a class="down" title="Stereo separation" href="#" id="modpaula">[)oo(]</a>
@@ -65,11 +66,14 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
         <div style="clear:both"></div>
         <div id="infotext">
           Note that this is somewhat experimental and is tested on Chrome 14+, Firefox 24+ and Safari 6+ so far. <span style="color:#faa">Disable AdBlock if you get cuts or stuttering!</span>
-          Email <a href="mailto:firehawk@haxor.fi" style="color:#cce">firehawk@haxor.fi</a> to report bugs, send suggestions or request songs. :)
+          Email <a href="mailto:firehawk@haxor.fi" style="color:#cce">firehawk@haxor.fi</a> to report bugs, send suggestions or request songs. :) Source code available in <a href="https://github.com/jhalme/webaudio-mod-player">GitHub</a>.
         </div>
       </div>
+      
       <div style="display:none;" id="loadercontainer">
-        <select size="24" id="modfile">
+        <div id="musiclibrary">
+          <br/>dh0:music_library&gt;<br/><br/>
+          <select size="24" id="modfile">
 <?php
   $i=0;
   foreach (glob("mods/*", GLOB_ONLYDIR) as $composer) {
@@ -88,11 +92,37 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
   }
   echo "          </optgroup>\n";
 ?>
+          </select>
+          <div style="clear:left;"></div>
+          <div style="margin-left: 24px;">
+            <a href="#" id="load_cancel">[&lt; back]</a>&nbsp;
+            <a href="#" id="load">[load song]</a>&nbsp;
+            <a href="#" id="add_playlist">[add +&gt;]</a>
+          </div>
+        </div>
+        
+        <div id="playlist">
+        <br/>playlist&gt;<br/><br/>
+        <select size="24" id="playlist_box">
+        <!-- <option value="">Playlist is empty</option> -->
         </select>
-        <div id="fileinfo">Choose a song from the listbox and click 'load' to open it into the player.<br/><br/>Doubleclicking the song works also.</div>
-        <div style="clear:both;"></div>
-        <div style="margin-left: 24px;"><a href="#" id="load">[load]</a> <a href="#" id="load_cancel">[cancel]</a></div>
+          <div style="clear:right;"></div>
+          <div style="margin-left: 24px;">
+            <a href="#" id="playlist_up">[^^]</a>&nbsp;
+            <a href="#" id="playlist_dn">[vv]</a>&nbsp;
+            <a href="#" id="playlist_remove">[remove]</a>&nbsp;
+            <a href="#" id="playlist_clear">[clear]</a>&nbsp;
+            <a href="#" id="playlist_jumpto">[play song]</a>
+          </div>        
+        </div>
+        
+        <div style="clear:both"></div>
+<!--        <br/><br/>Choose a song from the listbox and click 'load song' or doubleclick song to open it into the player. -->
+        <br/>Playlist functionality is not yet complete.
+        
       </div>
+      
+      
     </div>
   </body>
 </html>

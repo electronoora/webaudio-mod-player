@@ -1,21 +1,45 @@
-body { font-family: monospace; font-size: 14px; background-color: #000; color: #ccc; font-weight: normal; line-height: 16px;}
+@font-face {
+  font-family: 'Topaz';
+  src: url('topaz.ttf');
+}
+
+body {
+  font-family: Topaz;
+  font-size: 16px; background-color: #000; color: #ccc; font-weight: normal;
+  line-height: 16px;
+}
 a { color: #99c; text-decoration: none;}
 a:visited { color: #99c; }
 a:hover { color: #ddf; }
 a.down:hover { color: #fdd !important; }
+
+a.inactive, a.inactive:visited, a.inactive:hover { color: #445; }
 
 .tdalink { color: #113 !important; }
 .tdalink:hover { color: #558 !important; }
 .tdalink:visited { color:#113 !important; }
 
 select { 
-  background-color: #000; color: #8f8; font-family: monospace; font-size: 14px; border: 0px;
-  margin-bottom: 14px; outline: none; font-style: normal; font-weight: normal;
+  background-color: #000; color: #8f8;
+  font-family: Topaz;
+  font-size: 16px;
+  margin-bottom: 16px;
+  border: 0px;
+  outline: none; font-style: normal; font-weight: normal;
 }
-optgroup { font-size: 14px; color: #88f; font-style: normal; font-weight: normal; }
+optgroup {
+  font-size: 16px;
+  color: #88f; font-style: normal; font-weight: normal; }
 option { color: #8f8; }
 .odd { background-color: #181818; }
 .even { background-color: #222222; }
+
+option:focus,
+option:active,
+option:checked {
+    background-color: #aae;
+    color: #fff;
+}
 
 ::-webkit-scrollbar {
   width: 16px;
@@ -31,7 +55,7 @@ option { color: #8f8; }
 
 #outercontainer { width: 928px; }
 
-#headercontainer { background-color:#0cc; color:#000; margin-bottom:8px; padding-bottom: 1px; }
+#headercontainer { background-color:#0cc; color:#000; margin-bottom:8px; padding-top: 1px; padding-bottom: 1px; }
 
 #modtitle { white-space: pre; color: #fff; }
 #modinfo { color: #aaa; }
@@ -46,7 +70,21 @@ option { color: #8f8; }
 #load_song { float:right; }
 
 #modfile { float:left; width: 480px; }
-#fileinfo { width: 360px; float:left; margin-left: 12px; margin-top: 16px; }
+#fileinfo { width: 480px; float:left; margin-left: 0px; margin-top: 0px; color: #aae;}
+
+#playlist_box { width: 416px; }
+
+#musiclibrary {
+  color: #aae;
+  width: 500px;
+  float: left;
+}
+
+#playlist {
+  width: 420px;
+  float: right;
+  color: #aae;
+}
 
 .hl { color: #fff; }
 .down { color: #faa !important; }

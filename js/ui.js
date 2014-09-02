@@ -35,10 +35,60 @@ function pad(s,l)
   return ps;
 }
 
+function addToPlaylist(song)
+{
+  var a=song.split("/");
+  var songtitle="";
+  if (a.length > 3) {
+    songtitle=a[2]+"/"+a[3];
+  } else {
+    songtitle=a[2];
+  }
+  var dupe=false;
+  $("#playlist_box option").each(function(o) {
+    if ($(this).val() == song) dupe=true;
+  });
+  if (!dupe) {
+    var optclass=($("#playlist_box option").length & 1) ? "odd" : "even";
+    $("#playlist_box").append("<option class=\""+optclass+"\" value=\""+song+"\">"+songtitle+"</option>");
+  }
+  return !dupe;
+}
+
+function refreshStoredPlaylist()
+{
+  if(typeof(Storage) !== "undefined") {
+    var playlist=[];
+    $("#playlist_box option").each(function(o) {
+      playlist.push($(this).val());
+    });
+    localStorage["playlist"]=JSON.stringify(playlist);
+  }
+}
+
+function playFromPlaylist(module, autostart)
+{
+  module.setautostart(autostart);
+  $("#modtimer").html("loading");
+  var loadInterval=setInterval(function(){
+    if (!module.delayload) {
+       window.currentModule=$("#playlist_box option:selected").val();
+       window.playlistPosition=$("#playlist_box option").index($("#playlist_box option:selected"));
+       window.playlistActive=true;
+       module.load($("#playlist_box option:selected").val());      
+       clearInterval(loadInterval);
+    }
+  }, 200);
+}
+
 $(document).ready(function() {
   var timer;
   var module=new Protracker();
   var oldpos=-1;
+
+  window.currentModule=$("#modfile").val();
+  window.playlistPosition=0;
+  window.playlistActive=false;
   
   if(typeof(Storage) !== "undefined") {
     // read previous button states from localStorage
@@ -97,6 +147,10 @@ $(document).ready(function() {
         break;
       }
     }
+    if (localStorage["playlist"]) {
+      var playlist=JSON.parse(localStorage["playlist"]);
+      for(i=0;i<playlist.length;i++) addToPlaylist(playlist[i]);
+    }
   }
 
   module.onReady=function() {  
@@ -106,13 +160,21 @@ $(document).ready(function() {
       $("#modsamples").append("<span class=\"samplelist\" id=\"sample"+hb(i+1)+"\">"+hb(i+1)+" "+pad(this.sample[i].name, 22)+"</span>\n");
     $("#modinfo").html("");
     $("#modinfo").append("('"+this.signature+"')");
-    var s=$("#modfile").val().split("/");
+    var s=window.currentModule.split("/");
     if (s.length > 3) {
       $("title").html(s[3]+" - Protracker module player for Web Audio");
       window.history.pushState("object of string", "Title", "/"+s[2]+"/"+s[3]);
     } else {
       $("title").html(s[2]+" - Protracker module player for Web Audio");
       window.history.pushState("object of string", "Title", "/"+s[2]);
+    }
+    
+    if (window.playlistActive) {
+      $("#prev_track").removeClass("inactive");
+      $("#next_track").removeClass("inactive");
+    } else {
+      $("#prev_track").addClass("inactive");
+      $("#next_track").addClass("inactive");
     }
     
     var pdata="";
@@ -174,12 +236,28 @@ $(document).ready(function() {
   };
 
   module.onStop=function() {
-    clearInterval(timer);
-    $("#modtimer").html("stopped");
     $("#modsamples").children().removeClass("activesample");
     $("#modchannels").html("");
     $(".currentpattern").removeClass("currentpattern");
+    clearInterval(timer);
+    $("#modtimer").html("stopped");
     $("#play").html("[play]");
+
+    // if in playlist mode, load next song
+    if (window.playlistActive && module.endofsong) {
+      var opt=$("#playlist_box option:selected");
+      if (opt.length) {
+        var n=$(opt).next("option");
+        if (n.length) {  
+          // load next track
+        } else {
+          // jump to first
+          n=$("#playlist_box option:first");
+        }
+        $("#playlist_box").val($(n).val()).change();
+        playFromPlaylist(module, true);
+      }
+    }
   };
 
   $("#play").click(function(){
@@ -291,23 +369,28 @@ $(document).ready(function() {
       module.setautostart(false);
     }
     $("#modtimer").html("loading");
-
     $("#loadercontainer").hide();
     $("#innercontainer").show();
-    
     var loadInterval=setInterval(function(){
       if (!module.delayload) {
-         module.load($("#modfile").val());      
+         window.currentModule=$("#modfile").val();
+         window.playlistActive=false;
+         module.load($("#modfile").val());
          clearInterval(loadInterval);
       }
     }, 200);
-    
     return false;
   });
   
   $("#load_cancel").click(function(){
     $("#loadercontainer").hide();
     $("#innercontainer").show();
+    return false;
+  });
+  
+  $("#add_playlist").click(function(){
+    var song=$("#modfile").val();
+    if (addToPlaylist(song)) refreshStoredPlaylist();
     return false;
   });
 
@@ -320,4 +403,109 @@ $(document).ready(function() {
   });
 
   if ($("#modfile").val()!="") module.load($("#modfile").val());
+  
+  $("#playlist_remove").click(function(){
+    var opt=$("#playlist_box option:selected");
+    if (opt.length) {
+      var song=opt.val();
+      opt.remove();
+      refreshStoredPlaylist();
+    }
+    return false;
+  });
+
+  $("#playlist_clear").click(function(){
+    $("#playlist_box").html("");
+    refreshStoredPlaylist();
+    return false;
+  });
+  
+  $("#playlist_jumpto").click(function(){
+    var opt=$("#playlist_box option:selected");
+    if (opt.length) {
+      if (module.playing) module.stop();
+      module.setautostart(true);
+      $("#modtimer").html("loading");
+      $("#loadercontainer").hide();
+      $("#innercontainer").show();
+      var loadInterval=setInterval(function(){
+        if (!module.delayload) {
+           window.currentModule=$("#playlist_box option:selected").val();
+           window.playlistPosition=$("#playlist_box option").index($("#playlist_box option:selected"));
+           window.playlistActive=true;
+           module.load($("#playlist_box option:selected").val());      
+           clearInterval(loadInterval);
+        }
+      }, 200);
+    }
+    return false;
+  });
+  
+  $("#playlist_up").click(function(){
+    var opt=$("#playlist_box option:selected");
+    if (opt.length) {
+      var p=$(opt).prev("option");
+      if (p.length) {
+        var v=$(p).val();
+        var t=$(p).html();
+        $(p).html($(opt).html());
+        $(p).val($(opt).val());
+        $(opt).html(t);
+        $(opt).val(v);
+        $("#playlist_box").val($(p).val()).change();
+      }
+      refreshStoredPlaylist();
+    }
+    return false;
+  });
+
+  $("#playlist_dn").click(function(){
+    var opt=$("#playlist_box option:selected");
+    if (opt.length) {
+      var n=$(opt).next("option");
+      if (n.length) {
+        var v=$(n).val();
+        var t=$(n).html();
+        $(n).html($(opt).html());
+        $(n).val($(opt).val());
+        $(opt).html(t);
+        $(opt).val(v);
+        $("#playlist_box").val($(n).val()).change();
+      }
+      refreshStoredPlaylist();
+    }
+    return false;
+  });
+  
+  $("#next_track").click(function(){
+    var opt=$("#playlist_box option:selected");
+    if (opt.length) {
+      var n=$(opt).next("option");
+      if (n.length) {  
+        // load next track
+      } else {
+        // jump to first
+        n=$("#playlist_box option:first");
+      }
+      $("#playlist_box").val($(n).val()).change();
+      playFromPlaylist(module, module.playing);
+    }
+    return false;
+  });
+  $("#prev_track").click(function(){
+    var opt=$("#playlist_box option:selected");
+    if (opt.length) {
+      var p=$(opt).prev("option");
+      if (p.length) {
+        // load previous track
+      } else {
+        // jump to last
+        p=$("#playlist_box option:last");        
+      }
+      $("#playlist_box").val($(p).val()).change();      
+      playFromPlaylist(module, module.playing);
+    }
+    return false;
+  });
+    
 });

@@ -1,8 +1,6 @@
 webaudio-mod-player
 ===================
 
-Protracker module player for Web Audio (c) 2012-2014 Jani Halme
-
 This is a Protracker module player implemented in JavaScript using the Web Audio API. It supports standard 4-channel Amiga Protracker modules, as well as 6- and 8-channel PC FastTracker modules. Multichannel modules also work, although mod.dope ('28CH') has only been tested with.
 
 You can test the player here:
@@ -17,4 +15,14 @@ mods<br/>
 mods/Mantronix_and_Tip<br/>
 mods/Mantronix_and_Tip/mod.overload<br/>
 mods/mod.saf<br/>
+
+
+
+Copyrights:
+
+- Protracker module player for Web Audio (c) 2012-2014 Jani Halme
+
+- Topaz TTF font (c) 2009 dMG of Trueschool and Divine Stylers
+
+- mod.overload (c) 1991 by Mantronix and Tip of Phenomena
 
