@@ -441,6 +441,10 @@ $(document).ready(function() {
     return false;
   });
   
+  $("#playlist_box option").dblclick(function() {
+    $("#playlist_jumpto").click();
+  });  
+  
   $("#playlist_up").click(function(){
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
