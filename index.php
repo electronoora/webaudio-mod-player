@@ -99,6 +99,9 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
             <a href="#" id="load">[load song]</a>&nbsp;
             <a href="#" id="add_playlist">[add +&gt;]</a>
           </div>
+          <div style="margin-left: 24px; margin-top: 12px;">
+            <input value="" id="loadfilter" size="48" placeholder="Filter" style="border: 1px solid #8f8; background-color: #181818" />
+          </div>
         </div>
         
         <div id="playlist">

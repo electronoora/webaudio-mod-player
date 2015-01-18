@@ -510,6 +510,17 @@ $(document).ready(function() {
     }
     return false;
   });
+
+  $("#loadfilter").keydown(function(e){
+    e.which == 27 && $(this).val('');
+    $('#modfile option').show();
+    var val=$(this).val().toLowerCase();
+    if (val.length) {
+      $('#modfile option').filter(function(){
+        return $(this).text().toLowerCase().indexOf('mod.'+val)!==0;
+      }).hide();
+    }
+  });
   
   $(document).keypress(function(ev){
     if (ev.keyCode==32) {
