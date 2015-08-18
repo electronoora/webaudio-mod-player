@@ -19,7 +19,7 @@ a.inactive, a.inactive:visited, a.inactive:hover { color: #445; }
 .tdalink:hover { color: #558 !important; }
 .tdalink:visited { color:#113 !important; }
 
-select { 
+select, input { 
   background-color: #000; color: #8f8;
   font-family: Topaz;
   font-size: 16px;
@@ -53,7 +53,7 @@ option:checked {
   border: 1px solid: #fff;
 }
 
-#outercontainer { width: 928px; }
+#outercontainer { width: 928px; margin: 0 auto 0 auto; }
 
 #headercontainer { background-color:#0cc; color:#000; margin-bottom:8px; padding-top: 1px; padding-bottom: 1px; }
 
