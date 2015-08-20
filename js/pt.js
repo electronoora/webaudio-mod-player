@@ -14,6 +14,11 @@
   http://opensource.org/licenses/MIT
 
   kinda sorta changelog:
+  (nov 2014)
+  - changed the vibrato again. now using linear depth instead of
+    +/- semitone relative to nearest note.
+  - pre-scan first row and set filter on load to avoid glitch with
+    songs that enable filter immediately on start
   (sep 2014)
   - fixed bug with E8x sync and added 80x to also function for sync
     events due to problems with some protracker versions (thanks spot)
@@ -170,8 +175,11 @@ Protracker.prototype.createContext = function()
 
   // "LED filter" at 3275kHz - off by default
   this.lowpassNode=this.context.createBiquadFilter();
-  this.lowpassNode.frequency.value=28867;
-  this.filter=false;
+  if (this.filter) {
+    this.lowpassNode.frequency.value=3275;
+  } else {
+     this.lowpassNode.frequency.value=28867;
+  }
 
   // mixer
   if ( typeof this.context.createJavaScriptNode === 'function') {
@@ -536,9 +544,25 @@ Protracker.prototype.parse = function()
     sst+=this.sample[i].length;
   }
 
+  // look ahead at very first row to see if filter gets enabled
+  this.filter=false;
+  for(var ch=0;ch<this.channels;ch++)
+  {
+    p=this.patterntable[0];
+    pp=ch*4;
+    var cmd=this.pattern[p][pp+2]&0x0f, data=this.pattern[p][pp+3];
+    if (cmd==0x0e && data>=0x01 && data<0x10) {
+      this.filter=true;
+    }
+  }
+
+  // set lowpass cutoff
   if (this.context) {
-    this.lowpassNode.frequency.value=28867;
-    this.filter=false;
+    if (this.filter) {
+      this.lowpassNode.frequency.value=3275;
+    } else { 
+      this.lowpassNode.frequency.value=28867;    
+    }
   }
 
   this.ready=true;
@@ -767,9 +791,7 @@ Protracker.prototype.effect_t0_4=function(mod, ch) { // 4 vibrato
     mod.channel[ch].vibratodepth=(mod.channel[ch].data&0x0f);
     mod.channel[ch].vibratospeed=(mod.channel[ch].data&0xf0)>>4;
   }
-  mod.channel[ch].voiceperiod+=
-    (mod.channel[ch].vibratodepth/32)*mod.channel[ch].semitone*(mod.vibratotable[mod.channel[ch].vibratowave&3][mod.channel[ch].vibratopos]/127);        
-  mod.channel[ch].flags|=1;
+  mod.effects_t1[4](mod, ch);
 }
 Protracker.prototype.effect_t0_5=function(mod, ch) { // 5
 }
@@ -937,8 +959,13 @@ Protracker.prototype.effect_t1_3=function(mod, ch) { // 3 slide to note
   mod.channel[ch].flags|=3; // recalc speed
 }
 Protracker.prototype.effect_t1_4=function(mod, ch) { // 4 vibrato
-  mod.channel[ch].voiceperiod+=
-    (mod.channel[ch].vibratodepth/32)*mod.channel[ch].semitone*(mod.vibratotable[mod.channel[ch].vibratowave&3][mod.channel[ch].vibratopos]/127);
+  var waveform=mod.vibratotable[mod.channel[ch].vibratowave&3][mod.channel[ch].vibratopos]/63.0; //127.0;
+
+  // two different implementations for vibrato
+//  var a=(mod.channel[ch].vibratodepth/32)*mod.channel[ch].semitone*waveform; // non-linear vibrato +/- semitone
+  var a=mod.channel[ch].vibratodepth*waveform; // linear vibrato, depth has more effect high notes
+
+  mod.channel[ch].voiceperiod+=a;
   mod.channel[ch].flags|=1;
 }
 Protracker.prototype.effect_t1_5=function(mod, ch) { // 5 volslide + slide to note

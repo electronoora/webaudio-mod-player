@@ -66,7 +66,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
         <div style="clear:both"></div>
         <div id="infotext">
           Note that this is somewhat experimental and is tested on Chrome 14+, Firefox 24+ and Safari 6+ so far. <span style="color:#faa">Disable AdBlock if you get cuts or stuttering!</span>
-          Email <a href="mailto:firehawk@haxor.fi" style="color:#cce">firehawk@haxor.fi</a> to report bugs, send suggestions or request songs. :) Source code available in <a href="https://github.com/jhalme/webaudio-mod-player">GitHub</a>.
+          Email <a href="mailto:firehawk@haxor.fi" style="color:#cce">firehawk@haxor.fi</a> to report bugs, send suggestions or request songs. :) Source code available in <a target="_blank" href="https://github.com/jhalme/webaudio-mod-player">GitHub</a>.
         </div>
       </div>
       
