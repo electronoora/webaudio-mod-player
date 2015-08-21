@@ -411,12 +411,11 @@ Screamtracker.prototype.advance=function(mod) {
     mod.flags|=4;
     while (mod.patterntable[mod.position]==254) mod.position++; // skip markers
   }
-  if (mod.position>=mod.songlen) {
+  if (mod.position>=mod.songlen || mod.patterntable[mod.position]==255) {
     if (mod.repeat) {
       mod.position=0;
     } else {
       this.endofsong=true;
-      mod.stop();
     }
     return;
   }
