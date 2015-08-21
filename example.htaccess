@@ -3,12 +3,18 @@ RewriteEngine on
 RewriteCond %{HTTP_HOST} !^mod.haxor.fi$
 RewriteRule ^(.*)$ http://mod.haxor.fi/%{REQUEST_URI} [R,L]
 
-# modules with a composer name
 RewriteCond %{REQUEST_URI} ^/(.*)/mod.(.*)$
-RewriteCond /var/www/protracker/mods/%1/mod.%2 -f
+RewriteCond /var/www/modplay/mods/%1/mod.%2 -f
 RewriteRule ^(.*)$ /?mod=%1/mod.%2 [L]
 
-# modules without a composer name
 RewriteCond %{REQUEST_URI} ^/mod.(.*)$
-RewriteCond /var/www/protracker/mods/mod.%1 -f
+RewriteCond /var/www/modplay/mods/mod.%1 -f
 RewriteRule ^(.*)$ /?mod=mod.%1 [L]
+
+RewriteCond %{REQUEST_URI} ^/(.*).mod$
+RewriteCond /var/www/modplay/mods/%1.mod -f
+RewriteRule ^(.*)$ /?mod=%1.mod [L]
+
+RewriteCond %{REQUEST_URI} ^/(.*).s3m$
+RewriteCond /var/www/modplay/mods/%1.s3m -f
+RewriteRule ^(.*)$ /?mod=%1.s3m [L]

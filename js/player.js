@@ -1,0 +1,416 @@
+/*
+  front end wrapper class for format-specific player classes
+  (c) 2015 firehawk/tda
+*/
+
+function Modplayer()
+{
+  this.supportedformats=new Array('mod', 's3m');
+
+  this.url="";
+  this.format="s3m";
+
+  this.loading=false;
+  this.ready=false;
+  this.playing=false;
+  this.paused=false;
+  this.repeat=false;
+
+  this.separation=1;
+  
+  this.amiga500=false;
+  
+  this.filter=false;
+  this.endofsong=false;
+  
+  this.autostart=false;
+  this.bufferstodelay=4; // adjust this if you get stutter after loading new song
+  this.delayfirst=0;
+  this.delayload=0;
+
+  this.onReady=function(){};
+  this.onPlay=function(){};
+  this.onStop=function(){};
+
+  this.buffer=0;
+  this.mixerNode=0;
+  this.context=null;
+  this.samplerate=44100;
+  this.bufferlen=4096;
+
+  // format-specific player
+  this.player=null;
+  
+  // read-only data from player class
+  this.title="";
+  this.signature="....";
+  this.songlen=0;
+  this.channels=0;
+  this.patterns=0;
+  this.samplenames=new Array();
+}
+
+
+
+// load module from url into local buffer
+Modplayer.prototype.load = function(url)
+{
+    this.stop(); // just in case
+
+    // try to identify file format from url and create a new
+    // player class for it
+    this.url=url;
+    var ext=url.split('.').pop().toLowerCase().trim();
+    if (this.supportedformats.indexOf(ext)==-1) {
+      // unknown extension, maybe amiga-style prefix?
+      ext=url.split('/').pop().split('.').shift().toLowerCase().trim();
+      if (this.supportedformats.indexOf(ext)==-1) {
+        // ok, give up
+        return false;
+      }
+    }
+    this.format=ext;
+      
+    switch (ext) {
+      case 'mod':
+        this.player=new Protracker();
+        break;
+      case 's3m':
+        this.player=new Screamtracker();
+        break;
+    }
+    
+    this.player.onReady=this.loadSuccess;
+    
+    var request = new XMLHttpRequest();
+    request.open("GET", this.url, true);
+    request.responseType = "arraybuffer";
+    this.request = request;
+    this.loading=true;
+    var asset = this;
+    request.onload = function() {
+        var buffer=new Uint8Array(request.response);
+        if (asset.player.parse(buffer)) {
+          // copy static data from player
+          asset.title=asset.player.title
+          asset.signature=asset.player.signature;
+          asset.songlen=asset.player.songlen;
+          asset.channels=asset.player.channels;
+          asset.patterns=asset.player.patterns;
+          asset.filter=asset.player.filter;
+          asset.samplenames=new Array(32)
+          for(i=0;i<32;i++) asset.samplenames[i]="";
+          for(i=0;i<asset.player.sample.length;i++) asset.samplenames[i]=asset.player.sample[i].name;
+
+          // set player variables from wrapper
+          asset.player.separation=asset.separation;
+          
+          asset.onReady();
+          if (asset.autostart) asset.play();
+        }
+    }
+    request.send(); 
+    return true; 
+}
+
+
+
+// play loaded and parsed module with webaudio context
+Modplayer.prototype.play = function()
+{
+  if (this.player) {
+    if (this.context==null) this.createContext();
+    this.player.samplerate=this.samplerate;
+    
+    if (!this.player.ready) return false;
+
+    if (this.player.paused) {
+      this.player.paused=false;
+      return true;
+    }
+    this.endofsong=false;
+    this.player.endofsong=false;
+    this.player.paused=false;
+    this.player.initialize();
+    this.player.flags=1+2;
+    this.player.playing=true;
+    this.playing=true;
+
+    this.onPlay();
+
+    this.player.delayfirst=this.bufferstodelay;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
+
+// pause playback
+Modplayer.prototype.pause = function()
+{
+  if (this.player) {
+    if (!this.player.paused) {
+      this.player.paused=true;
+    } else {
+      this.player.paused=false;
+    }
+  }
+}
+
+
+
+// stop playback
+Modplayer.prototype.stop = function()
+{
+  this.paused=false;
+  this.playing=false;
+  if (this.player) {
+    this.player.paused=false;
+    this.player.playing=false;
+    this.player.delayload=1;
+  }
+  this.onStop();
+}
+
+
+
+// stop playing but don't call callbacks
+Modplayer.prototype.stopaudio = function(st)
+{
+  if (this.player) {
+    this.player.playing=st;
+  }
+}
+
+
+
+// jump positions forward/back
+Modplayer.prototype.jump = function(step)
+{
+  if (this.player) {
+    this.player.tick=0;
+    this.player.row=0;
+    this.player.position+=step;
+    this.player.flags=1+2;  
+    if (this.player.position<0) this.player.position=0;
+    if (this.player.position >= this.player.songlen) this.stop();
+  }
+}
+
+
+
+// set whether module repeats after songlen
+Modplayer.prototype.setrepeat = function(rep)
+{
+  this.repeat=rep;
+  if (this.player) this.player.repeat=rep;
+}
+
+
+
+// set stereo separation mode (0=standard, 1=65/35 mix, 2=mono)
+Modplayer.prototype.setseparation = function(sep)
+{
+  this.separation=sep;
+  if (this.player) this.player.separation=sep;
+}
+
+
+
+// set autostart to play immediately after loading
+Modplayer.prototype.setautostart = function(st)
+{
+  this.autostart=st;
+}
+
+
+
+// set amiga model - changes fixed filter state
+Modplayer.prototype.setamigamodel = function(amiga)
+{
+  if (amiga=="600" || amiga=="1200" || amiga=="4000") {
+    this.amiga500=false;
+    if (this.filterNode) this.filterNode.frequency.value=28867;
+  } else {
+    this.amiga500=true;
+    if (this.filterNode) this.filterNode.frequency.value=6000;
+  }
+}
+
+
+
+// amiga "LED" filter
+Modplayer.prototype.setfilter = function(f)
+{
+  if (f) {
+    this.lowpassNode.frequency.value=3275;
+  } else {
+     this.lowpassNode.frequency.value=28867;
+  }
+  this.filter=f;
+  if (this.player) this.player.filter=f;
+}
+
+
+
+// are there E8x sync events queued?
+Modplayer.prototype.hassyncevents = function()
+{
+  if (this.player) return (this.player.syncqueue.length != 0);
+  return false;
+}
+
+
+
+// pop oldest sync event nybble from the FIFO queue
+Modplayer.prototype.popsyncevent = function()
+{
+  if (this.player) return this.player.syncqueue.pop();
+}
+
+
+
+// get channel vu meters from player
+Modplayer.prototype.channelvu = function()
+{
+  if (this.player) return this.player.chvu;
+}
+
+
+
+// get output vu meters from player
+Modplayer.prototype.vu = function()
+{
+  if (this.player) return this.player.vu;
+}
+
+
+// ger current pattern number
+Modplayer.prototype.currentpattern = function()
+{
+  if (this.player) return this.player.patterntable[this.player.position];
+}
+
+
+// get current pattern in unpacked format (note, sample, volume, command, data)
+Modplayer.prototype.patterndata = function(pn)
+{
+  var i, c, patt;
+  if (this.format=='mod') {
+    patt=new Uint8Array(this.player.pattern_unpack[pn]);
+    for(i=0;i<64;i++) for(c=0;c<this.player.channels;c++) {
+      patt[i*5*32+c*5+3]+=0x37;
+      if (patt[i*5*32+c*5+3]<0x41) patt[i*5*32+c*5+3]-=0x07;
+    }
+  } else if (this.format='s3m') {
+    patt=new Uint8Array(this.player.pattern[pn]);
+    for(i=0;i<64;i++) for(c=0;c<this.player.channels;c++) {
+      if (patt[i*5*32+c*5+3]==255) patt[i*5*32+c*5+3]=0x2e;
+      else patt[i*5*32+c*5+3]+=0x40;    
+    }
+  }
+  return patt;
+}
+
+
+
+// check if a channel has a note on
+Modplayer.prototype.noteon = function(ch)
+{
+  if (ch>=this.channels) return 0;
+  return this.player.channel[ch].noteon;
+}
+
+
+
+// get currently active sample on channel
+Modplayer.prototype.currentsample = function(ch)
+{
+  if (ch>=this.channels) return 0;
+  return this.player.channel[ch].sample;
+}
+
+
+
+// create the web audio context
+Modplayer.prototype.createContext = function()
+{
+  if ( typeof AudioContext !== 'undefined') {
+    this.context = new AudioContext();
+  } else {
+    this.context = new webkitAudioContext();
+  }
+  this.samplerate=this.context.sampleRate;
+  this.bufferlen=(this.samplerate > 44100) ? 4096 : 2048; 
+
+  // Amiga 500 fixed filter at 6kHz. WebAudio lowpass is 12dB/oct, whereas
+  // older Amigas had a 6dB/oct filter at 4900Hz. 
+  this.filterNode=this.context.createBiquadFilter();
+  if (this.amiga500) {
+    this.filterNode.frequency.value=6000;
+  } else {
+    this.filterNode.frequency.value=28867;
+  }
+
+  // "LED filter" at 3275kHz - off by default
+  this.lowpassNode=this.context.createBiquadFilter();
+  this.setfilter(this.filter);
+
+  // mixer
+  if ( typeof this.context.createJavaScriptNode === 'function') {
+    this.mixerNode=this.context.createJavaScriptNode(this.bufferlen, 1, 2);
+  } else {
+    this.mixerNode=this.context.createScriptProcessor(this.bufferlen, 1, 2);
+  }
+  this.mixerNode.module=this;
+  this.mixerNode.onaudioprocess=Modplayer.prototype.mix;
+
+  // compressor for a bit of volume boost, helps with multich tunes
+  this.compressorNode=this.context.createDynamicsCompressor();
+
+  // patch up some cables :)  
+  this.mixerNode.connect(this.filterNode);
+  this.filterNode.connect(this.lowpassNode);
+  this.lowpassNode.connect(this.compressorNode);
+  this.compressorNode.connect(this.context.destination);
+}
+
+
+
+// scriptnode callback - pass through to player class
+Modplayer.prototype.mix = function(ape) {
+  var mod;
+    
+  if (ape.srcElement) {
+    mod=ape.srcElement.module;
+  } else {
+    mod=this.module;
+  }
+  
+  if (mod.player && mod.delayfirst==0) {
+    mod.player.repeat=mod.repeat;
+    mod.player.separation=mod.separation;
+    
+    mod.player.mix(ape, mod.player);
+    
+    mod.row=mod.player.row;
+    mod.position=mod.player.position;
+    mod.speed=mod.player.speed;
+    mod.bpm=mod.player.bpm;
+    mod.endofsong=mod.player.endofsong;
+    
+    if (mod.player.filter != mod.filter) {
+      mod.setfilter(mod.player.filter);
+    }
+    
+    if (mod.endofsong && mod.playing) mod.stop();
+
+    if (mod.delayfirst>0) mod.delayfirst--;
+    mod.delayload=0;
+  } else {
+    // fill buffer with silence
+  }
+  
+}

@@ -13,7 +13,7 @@ features:
 todo:
 - work harder to remove more ultraclicks(tm)
 - optimize things. you know. things.
-- fix crash at the end of dune's control-e
+- fix crash at pos 54 (0x36) in dune's control-e
 - are Exx, Fxx and Gxx supposed to share the
   command data memory? need to test this.
 
@@ -23,37 +23,24 @@ function Screamtracker()
 {
   var i, t;
 
-  this.initialize();
   this.clearsong();
+  this.initialize();
 
-  this.url="";
-  this.loading=false;
-  this.ready=false;
   this.playing=false;
-  this.buffer=0;
-  this.mixerNode=0;
   this.paused=false;
   this.repeat=false;
 
   this.separation=0;
-
-  this.autostart=false;
-  this.bufferstodelay=4; // adjust this if you get stutter after loading new song
-  this.delayfirst=0;
-  this.delayload=0;
+  this.filter=false;
 
   this.syncqueue=[];
 
   this.vu=new Float32Array(2);
-  vu[0]=0.0; vu[1]=0.0;
+  this.vu[0]=0.0;
+  this.vu[1]=0.0;
 
-  this.onReady=function(){};
-  this.onPlay=function(){};
-  this.onStop=function(){};
-
-  this.context = null;
   this.samplerate=44100;
-  this.bufferlen=4096; //2048;
+  this.ramplen=64.0;
 
   this.periodtable=new Float32Array([
     27392.0, 25856.0, 24384.0, 23040.0, 21696.0, 20480.0, 19328.0, 18240.0, 17216.0, 16256.0, 15360.0, 14496.0, 
@@ -130,157 +117,6 @@ function Screamtracker()
 
 
 
-// create the web audio context
-Screamtracker.prototype.createContext = function()
-{
-  if ( typeof AudioContext !== 'undefined') {
-    this.context = new AudioContext();
-  } else {
-    this.context = new webkitAudioContext();
-  }
-  this.samplerate=this.context.sampleRate;
-  this.bufferlen=(this.samplerate > 44100) ? 4096 : 2048; 
-
-  // mixer
-  if ( typeof this.context.createJavaScriptNode === 'function') {
-    this.mixerNode=this.context.createJavaScriptNode(this.bufferlen, 1, 2);
-  } else {
-    this.mixerNode=this.context.createScriptProcessor(this.bufferlen, 1, 2);
-  }
-  this.mixerNode.module=this;
-  this.mixerNode.onaudioprocess=Screamtracker.prototype.mix;
-
-  // compressor for a bit of volume boost, helps with multich tunes
-  this.compressorNode=this.context.createDynamicsCompressor();
-
-  // patch up some cables :)  
-  this.mixerNode.connect(this.compressorNode);
-  this.compressorNode.connect(this.context.destination);
-}
-
-
-
-// play loaded and parsed module with webaudio context
-Screamtracker.prototype.play = function()
-{
-  if (this.context==null) this.createContext();
-  
-  if (!this.ready) return false;
-  if (this.paused) {
-    this.paused=false;
-    return true;
-  }
-  this.endofsong=false;
-  this.paused=false;
-  this.initialize();
-  this.flags=1+2;
-  this.playing=true;
-  this.onPlay();
-  this.delayfirst=this.bufferstodelay;
-  return true;
-}
-
-
-
-// pause playback
-Screamtracker.prototype.pause = function()
-{
-  if (!this.paused) {
-    this.paused=true;
-  } else {
-    this.paused=false;
-  }
-}
-
-
-
-// stop playback
-Screamtracker.prototype.stop = function()
-{
-  this.playing=false;
-  this.onStop();
-  this.delayload=1;
-}
-
-
-
-// stop playing but don't call callbacks
-Screamtracker.prototype.stopaudio = function(st)
-{
-  this.playing=st;
-}
-
-
-
-// jump positions forward/back
-Screamtracker.prototype.jump = function(step)
-{
-  this.tick=0;
-  this.row=0;
-  this.position+=step;
-  this.flags=1+2;  
-  if (this.position<0) this.position=0;
-  if (this.position >= this.songlen) this.stop();
-}
-
-
-
-// set whether module repeats after songlen
-Screamtracker.prototype.setrepeat = function(rep)
-{
-  this.repeat=rep;
-}
-
-
-
-// set stereo separation mode (0=s3m panning, 1="surround" panning, 2=mono)
-Screamtracker.prototype.setseparation = function(sep)
-{
-  this.separation=sep;
-}
-
-
-
-// not used on ST3
-Screamtracker.prototype.setamigatype = function(clock)
-{
-}
-
-
-
-// set autostart to play immediately after loading
-Screamtracker.prototype.setautostart = function(st)
-{
-  this.autostart=st;
-}
-
-
-
-
-
-// not used on ST3
-Screamtracker.prototype.setamigamodel = function(amiga)
-{
-}
-
-
-
-// are there sync events queued?
-Screamtracker.prototype.hassyncevents = function()
-{
-  return (this.syncqueue.length != 0);
-}
-
-
-
-// pop oldest sync event nybble from the FIFO queue
-Screamtracker.prototype.popsyncevent = function()
-{
-  return this.syncqueue.pop();
-}
-
-
-
 // clear song data
 Screamtracker.prototype.clearsong = function()
 {  
@@ -305,7 +141,7 @@ Screamtracker.prototype.clearsong = function()
   
   this.fastslide=0;
   
-  this.mixval=1.0;
+  this.mixval=8.0;
   
   this.sample=new Array();
   for(i=0;i<255;i++) {
@@ -328,12 +164,10 @@ Screamtracker.prototype.clearsong = function()
   
   this.patterndelay=0;
   this.patternwait=0;
-  
-  this.syncqueue=[];
 }
 
 
-// initialize all player variables
+// initialize all player variables to defaults prior to starting playback
 Screamtracker.prototype.initialize = function()
 {
   this.syncqueue=[];
@@ -388,46 +222,22 @@ Screamtracker.prototype.initialize = function()
 
 
 
-// load module from url into local buffer
-Screamtracker.prototype.load = function(url)
-{
-    this.playing=false; // a precaution
-
-    this.url=url;
-    this.clearsong();
-    
-    var request = new XMLHttpRequest();
-    request.open("GET", this.url, true);
-    request.responseType = "arraybuffer";
-    this.request = request;
-    this.loading=true;
-    var asset = this;
-    request.onload = function() {
-        asset.buffer=new Uint8Array(request.response);
-        asset.parse();
-        if (asset.autostart) asset.play();
-    }
-    request.send();  
-}
-
-
-
 // parse the module from local buffer
-Screamtracker.prototype.parse = function()
+Screamtracker.prototype.parse = function(buffer)
 {
   var i,j,c;
   
-  if (!this.buffer) return false;
+  if (!buffer) return false;
 
   // check s3m signature and type
-  for(i=0;i<4;i++) this.signature+=String.fromCharCode(this.buffer[0x002c+i]);
+  for(i=0;i<4;i++) this.signature+=String.fromCharCode(buffer[0x002c+i]);
   if (this.signature != "SCRM") return false;
-  if (this.buffer[0x001d] != 0x10) return false;
+  if (buffer[0x001d] != 0x10) return false;
 
   // default panning 3/C/3/...
   for(this.channels=0,i=0;i<32;i++) {
-    if (this.buffer[0x0040+i] != 0xff) {
-      c=this.buffer[0x0040+i]&15;
+    if (buffer[0x0040+i] != 0xff) {
+      c=buffer[0x0040+i]&15;
       if (c<8) {
         this.pan_r[i]=0.2;
         this.pan_l[i]=0.8;
@@ -440,26 +250,26 @@ Screamtracker.prototype.parse = function()
   }
   
   i=0;
-  while(this.buffer[i] && i<0x1c)
-    this.title+=String.fromCharCode(this.buffer[i++]);
+  while(buffer[i] && i<0x1c)
+    this.title+=String.fromCharCode(buffer[i++]);
 
-  this.ordNum=this.buffer[0x0020]|(this.buffer[0x0021]<<8);
-  this.insNum=this.buffer[0x0022]|(this.buffer[0x0023]<<8);
-  this.patNum=this.buffer[0x0024]|(this.buffer[0x0025]<<8);
+  this.ordNum=buffer[0x0020]|(buffer[0x0021]<<8);
+  this.insNum=buffer[0x0022]|(buffer[0x0023]<<8);
+  this.patNum=buffer[0x0024]|(buffer[0x0025]<<8);
 
-  this.globalVol=this.buffer[0x0030];
-  this.initSpeed=this.buffer[0x0031];
-  this.initBPM=this.buffer[0x0032];
+  this.globalVol=buffer[0x0030];
+  this.initSpeed=buffer[0x0031];
+  this.initBPM=buffer[0x0032];
   
-  this.fastslide=(this.buffer[0x0026]&64)?1:0;
+  this.fastslide=(buffer[0x0026]&64)?1:0;
   
   this.speed=this.initSpeed;
   this.bpm=this.initBPM;
 
   // check for additional panning info
-  if (this.buffer[0x0035]==0xfc) {
+  if (buffer[0x0035]==0xfc) {
     for(i=0;i<32;i++) {
-      c=this.buffer[0x0070+this.ordNum+this.insNum*2+this.patNum*2+i];
+      c=buffer[0x0070+this.ordNum+this.insNum*2+this.patNum*2+i];
       if (c&0x10) {
         c&=0x0f;
         this.pan_r[i]=(c/15.0)
@@ -469,7 +279,7 @@ Screamtracker.prototype.parse = function()
   }
   
   // check for mono panning
-  this.mixval=this.buffer[0x0033];
+  this.mixval=buffer[0x0033];
   if ((this.mixval&0x80)==0x80) {
     for(i=0;i<32;i++) {
       this.pan_r[i]=0.5;
@@ -481,7 +291,7 @@ Screamtracker.prototype.parse = function()
   this.mixval=128.0/Math.max(0x10, this.mixval&0x7f); // (8.0 when mastervol is 0x10, 1.0 when mastervol is 0x7f)
 
   // load orders
-  for(i=0;i<this.ordNum;i++) this.patterntable[i]=this.buffer[0x0060+i];
+  for(i=0;i<this.ordNum;i++) this.patterntable[i]=buffer[0x0060+i];
   for(this.songlen=0,i=0;i<this.ordNum;i++) if (this.patterntable[i]!=255) this.songlen++;
 
   // load instruments
@@ -489,33 +299,33 @@ Screamtracker.prototype.parse = function()
   for(i=0;i<this.insNum;i++) {
     this.sample[i]=new Object();
     
-    var offset=(this.buffer[0x0060 + this.ordNum + i*2]|this.buffer[0x0060 + this.ordNum + i*2 + 1]<<8)*16;
+    var offset=(buffer[0x0060 + this.ordNum + i*2]|buffer[0x0060 + this.ordNum + i*2 + 1]<<8)*16;
     j=0;
     this.sample[i].name="";
-    while(this.buffer[offset+0x0030+j] && j<28) { 
-      this.sample[i].name+=String.fromCharCode(this.buffer[offset+0x0030+j]);
+    while(buffer[offset+0x0030+j] && j<28) { 
+      this.sample[i].name+=String.fromCharCode(buffer[offset+0x0030+j]);
       j++;
     }
-    this.sample[i].length=this.buffer[offset+0x10]|this.buffer[offset+0x11]<<8;
-    this.sample[i].loopstart=this.buffer[offset+0x14]|this.buffer[offset+0x15]<<8;
-    this.sample[i].loopend=this.buffer[offset+0x18]|this.buffer[offset+0x19]<<8;
-    this.sample[i].volume=this.buffer[offset+0x1c];
-    this.sample[i].loop=this.buffer[offset+0x1f]&1;
-    this.sample[i].stereo=(this.buffer[offset+0x1f]&2)>>1;
-    this.sample[i].bits=(this.buffer[offset+0x1f]&4) ? 16 : 8;
-    this.sample[i].c2spd=this.buffer[offset+0x20]|this.buffer[offset+0x21]<<8;
+    this.sample[i].length=buffer[offset+0x10]|buffer[offset+0x11]<<8;
+    this.sample[i].loopstart=buffer[offset+0x14]|buffer[offset+0x15]<<8;
+    this.sample[i].loopend=buffer[offset+0x18]|buffer[offset+0x19]<<8;
+    this.sample[i].volume=buffer[offset+0x1c];
+    this.sample[i].loop=buffer[offset+0x1f]&1;
+    this.sample[i].stereo=(buffer[offset+0x1f]&2)>>1;
+    this.sample[i].bits=(buffer[offset+0x1f]&4) ? 16 : 8;
+    this.sample[i].c2spd=buffer[offset+0x20]|buffer[offset+0x21]<<8;
 
     // sample data
-    var smpoffset=(this.buffer[offset+0x0d]<<16|this.buffer[offset+0x0e]|this.buffer[offset+0x0f]<<8)*16;
+    var smpoffset=(buffer[offset+0x0d]<<16|buffer[offset+0x0e]|buffer[offset+0x0f]<<8)*16;
     this.sample[i].data=new Float32Array(this.sample[i].length);
-    for(j=0;j<this.sample[i].length;j++) this.sample[i].data[j]=(this.buffer[smpoffset+j]-128)/128.0; // convert to mono float signed
+    for(j=0;j<this.sample[i].length;j++) this.sample[i].data[j]=(buffer[smpoffset+j]-128)/128.0; // convert to mono float signed
   }
   
   // load and unpack patterns
   this.pattern=new Array();
   for(i=0;i<this.patNum;i++) {
-    var offset=(this.buffer[0x0060+this.ordNum+this.insNum*2+i*2]|this.buffer[0x0060+this.ordNum+this.insNum*2+i*2+1]<<8)*16;
-    var patlen=this.buffer[offset]|this.buffer[offset+1]<<8;
+    var offset=(buffer[0x0060+this.ordNum+this.insNum*2+i*2]|buffer[0x0060+this.ordNum+this.insNum*2+i*2+1]<<8)*16;
+    var patlen=buffer[offset]|buffer[offset+1]<<8;
     var row=0, pos=0, ch=0;
   
     this.pattern[i]=new Uint8Array(32*64*5);
@@ -530,33 +340,29 @@ Screamtracker.prototype.parse = function()
     row=0; ch=0;
     offset+=2;
     while(row<64) {
-      if (c=this.buffer[offset+pos++]) {
+      if (c=buffer[offset+pos++]) {
         ch=c&31;
         if (c&32) {
-          this.pattern[i][row*32*5 + ch*5 + 0]=this.buffer[offset+pos++]; // note
-          this.pattern[i][row*32*5 + ch*5 + 1]=this.buffer[offset+pos++]; // instrument
+          this.pattern[i][row*32*5 + ch*5 + 0]=buffer[offset+pos++]; // note
+          this.pattern[i][row*32*5 + ch*5 + 1]=buffer[offset+pos++]; // instrument
         }
         if (c&64)
-          this.pattern[i][row*32*5 + ch*5 + 2]=this.buffer[offset+pos++]; // volume
+          this.pattern[i][row*32*5 + ch*5 + 2]=buffer[offset+pos++]; // volume
         if (c&128) {
-          this.pattern[i][row*32*5 + ch*5 + 3]=this.buffer[offset+pos++]; // command
-          this.pattern[i][row*32*5 + ch*5 + 4]=this.buffer[offset+pos++]; // parameter
+          this.pattern[i][row*32*5 + ch*5 + 3]=buffer[offset+pos++]; // command
+          this.pattern[i][row*32*5 + ch*5 + 4]=buffer[offset+pos++]; // parameter
         }
-      } else {
-        row++;
-      }
+      } else row++;
     }
   }
   this.patterns=this.patNum;
 
   this.ready=true;
   this.loading=false;
-  this.buffer=0;
 
   this.chvu=new Float32Array(this.channels);
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
 
-  this.onReady();
   return true;
 }
 
@@ -656,7 +462,12 @@ Screamtracker.prototype.process_note = function(mod, p, ch) {
     }
     // in either case, set the slide to note target to note period
     mod.channel[ch].slideto=pv;
-  } else if (n==254) mod.channel[ch].noteon=0; // sample off
+  } else if (n==254) {
+    mod.channel[ch].noteon=0; // sample off
+    mod.channel[ch].volrampfrom=mod.channel[ch].voicevolume;
+    mod.channel[ch].volramp=0.0;
+    mod.channel[ch].voicevolume=0;    
+  }
   
   if (mod.pattern[p][pp+2]<=64) {
     if (!s) {
@@ -671,16 +482,10 @@ Screamtracker.prototype.process_note = function(mod, p, ch) {
 
 
 // mix an audio buffer with data
-Screamtracker.prototype.mix = function(ape) {
+Screamtracker.prototype.mix = function(ape, mod) {
   var f, fl, fr, pv;
   var p, pp, n, nn;
-  var mod;
 
-  if (ape.srcElement) {
-    mod=ape.srcElement.module;
-  } else {
-    mod=this.module;
-  }
   outp=new Float32Array(2);
 
   mod.vu[0]=0.0;
@@ -693,7 +498,7 @@ Screamtracker.prototype.mix = function(ape) {
     outp[0]=0.0;
     outp[1]=0.0;
 
-    if (!mod.paused && mod.playing && mod.delayfirst==0)
+    if (!mod.paused && !mod.endofsong && mod.playing)
     {
       mod.advance(mod);
 
@@ -740,7 +545,7 @@ Screamtracker.prototype.mix = function(ape) {
 
         // add channel output to left/right master outputs
         fl=0.0; fr=0.0;
-        if (mod.channel[ch].noteon) {
+        if (mod.channel[ch].noteon || (!mod.channel[ch].noteon && mod.channel[ch].volramp<1.0)) {
           if (mod.sample[mod.channel[ch].sample].length > mod.channel[ch].samplepos) {
             fl=mod.sample[mod.channel[ch].sample].data[Math.floor(mod.channel[ch].samplepos)];
            
@@ -756,8 +561,8 @@ Screamtracker.prototype.mix = function(ape) {
             // ramp volume changes over 64 samples to avoid clicks (grr, there are still some left)
             fr=fl*(mod.channel[ch].voicevolume/64.0);
             if (mod.channel[ch].volramp<1.0) {
-              fl= mod.channel[ch].volramp*fr + (1.0-mod.channel[ch].volramp)*(fl*(mod.channel[ch].volrampfrom/64.0));
-              mod.channel[ch].volramp+=(1.0/64.0);
+              fl=mod.channel[ch].volramp*fr + (1.0-mod.channel[ch].volramp)*(fl*(mod.channel[ch].volrampfrom/64.0));
+              mod.channel[ch].volramp+=(1.0/mod.ramplen);
             } else {
               fl=fr;
             }
@@ -815,8 +620,6 @@ Screamtracker.prototype.mix = function(ape) {
     bufs[0][s]=outp[0];
     bufs[1][s]=outp[1];
   }
-  if (mod.delayfirst>0) mod.delayfirst--;
-  mod.delayload=0;
 }
 
 
@@ -863,7 +666,7 @@ Screamtracker.prototype.effect_t0_e=function(mod, ch) { // slide down
   if ((mod.channel[ch].slidespeed&0xf0)==0xe0) {
     mod.channel[ch].voiceperiod+=(mod.channel[ch].slidespeed&0x0f);
   }
-  if (mod.channel[ch].voiceperiod>27392) mode.channel[ch].noteon=0;
+  if (mod.channel[ch].voiceperiod>27392) mod.channel[ch].noteon=0;
   mod.channel[ch].flags|=3; // recalc speed    
 }
 
@@ -875,7 +678,7 @@ Screamtracker.prototype.effect_t0_f=function(mod, ch) { // slide up
   if ((mod.channel[ch].slidespeed&0xf0)==0xe0) {
     mod.channel[ch].voiceperiod-=(mod.channel[ch].slidespeed&0x0f);
   }
-  if (mod.channel[ch].voiceperiod<56) mode.channel[ch].noteon=0;
+  if (mod.channel[ch].voiceperiod<56) mod.channel[ch].noteon=0;
   mod.channel[ch].flags|=3; // recalc speed    
 }
 
@@ -1052,7 +855,7 @@ Screamtracker.prototype.effect_t1_e=function(mod, ch) { // slide down
   if (mod.channel[ch].slidespeed<0xe0) {
     mod.channel[ch].voiceperiod+=mod.channel[ch].slidespeed*4;
   }
-  if (mod.channel[ch].voiceperiod>27392) mode.channel[ch].noteon=0;
+  if (mod.channel[ch].voiceperiod>27392) mod.channel[ch].noteon=0;
   mod.channel[ch].flags|=3; // recalc speed  
 }
 
@@ -1060,7 +863,7 @@ Screamtracker.prototype.effect_t1_f=function(mod, ch) { // slide up
   if (mod.channel[ch].slidespeed<0xe0) {
     mod.channel[ch].voiceperiod-=mod.channel[ch].slidespeed*4;
   }
-  if (mod.channel[ch].voiceperiod<56) mode.channel[ch].noteon=0;
+  if (mod.channel[ch].voiceperiod<56) mod.channel[ch].noteon=0;
   mod.channel[ch].flags|=3; // recalc speed  
 }
 
@@ -1083,8 +886,8 @@ Screamtracker.prototype.effect_t1_g=function(mod, ch) { // slide to note
 Screamtracker.prototype.effect_t1_h=function(mod, ch) { // vibrato
   mod.channel[ch].voiceperiod+=
     mod.vibratotable[mod.channel[ch].vibratowave&3][mod.channel[ch].vibratopos]*mod.channel[ch].vibratodepth/128;
-  if (mod.channel[ch].voiceperiod>27392) mode.channel[ch].voiceperiod=27392;
-  if (mod.channel[ch].voiceperiod<56) mode.channel[ch].voiceperiod=56;
+  if (mod.channel[ch].voiceperiod>27392) mod.channel[ch].voiceperiod=27392;
+  if (mod.channel[ch].voiceperiod<56) mod.channel[ch].voiceperiod=56;
   mod.channel[ch].flags|=1;
 }
 

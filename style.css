@@ -26,11 +26,10 @@ select, input {
   margin-bottom: 16px;
   border: 0px;
   outline: none; font-style: normal; font-weight: normal;
+  line-height: 16px;
 }
-optgroup {
-  font-size: 16px;
-  color: #88f; font-style: normal; font-weight: normal; }
-option { color: #8f8; }
+optgroup { font-size: 16px; color: #88f; font-style: normal; font-weight: normal; line-height: 16px; }
+option { color: #8f8; height: 16px; line-height: 16px; padding: 0; }
 .odd { background-color: #181818; }
 .even { background-color: #222222; }
 
@@ -53,7 +52,10 @@ option:checked {
   border: 1px solid: #fff;
 }
 
-#outercontainer { width: 928px; margin: 0 auto 0 auto; }
+#outercontainer {
+  width: 1176px;
+  margin: 0 auto 0 auto;
+}
 
 #headercontainer { background-color:#0cc; color:#000; margin-bottom:8px; padding-top: 1px; padding-bottom: 1px; }
 
@@ -61,7 +63,7 @@ option:checked {
 #modinfo { color: #aaa; }
 #modtimer { color: #99b; }      
 
-#modsamples { white-space:pre; float:right; margin-left:12px; color: #888 }
+#modsamples { white-space:pre; float:right; margin-left:8px; color: #888 }
 
 #modpattern { white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; }
 

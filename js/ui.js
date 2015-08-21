@@ -4,19 +4,32 @@
 */
 var notelist=new Array("C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-");
 
-function notef(n,s,c,d,cc)
+function notef(n,s,v,c,d,cc)
 {
-  if (cc<8)
-    return (n ? ("<span class=\"note\">"+notelist[n%12]+Math.floor(1+n/12)+" </span>") : ("... "))+
+  if (cc<=8)
+    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+" </span>") : ("... "))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span> ") : (".. "))+
-      "<span class=\"command\">"+c.toString(16)+hb(d)+"</span>|";
-  if (cc<12)
-    return (n ? ("<span class=\"note\">"+notelist[n%12]+Math.floor(1+n/12)+"</span>") : ("..."))+
+      ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span> "):(".. "))+
+      "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+  if (cc<=10)
+    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span>") : (".."))+
-      "<span class=\"command\">"+c.toString(16)+hb(d)+"</span>|";
-  return (n ? ("<span class=\"note\">"+notelist[n%12]+Math.floor(1+n/12)+"</span>") : 
+      ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):(".."))+
+      "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+  if (cc<=12)
+    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
+      (s ? ("<span class=\"sample\">"+hb(s)+"</span>") :
+      ((v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):("..")))+
+      "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+  if (cc<=16)
+    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
+      (c&d ? 
+       ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
+       ( s ? ("<span class=\"sample\">"+hb(s)+"</span>.") : ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>."):("...") ) )
+      )+"|";
+  return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : 
                 (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
-                (c&d ? ("<span class=\"command\">"+c.toString(16)+hb(d)+"</span>"):("...")))
+                (c&d ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>"):("...")))
          );
 }
 
@@ -24,7 +37,7 @@ function hb(n)
 {
   var s=n.toString(16);
   if (s.length==1) s='0'+s;
-  return s;
+  return s.toUpperCase();
 }
 
 function pad(s,l)
@@ -82,14 +95,54 @@ function playFromPlaylist(module, autostart)
   }, 200);
 }
 
+function updateSelectBox(e)
+{
+  var i, j, f, o="";
+  
+  var filter=$("#loadfilter").val().toLowerCase();
+  for(i=0;i<window.musicLibrary.length;i++) {
+    og=""; f=0;
+    if (window.musicLibrary[i].composer=="Unknown") {
+      og+='<optgroup class="'+((i&1)?"odd":"even")+'" label="'+window.musicLibrary[i].composer+'">';
+      for(j=0;j<window.musicLibrary[i].songs.length;j++) {
+        if (filter=="" || window.musicLibrary[i].songs[j].file.toLowerCase().indexOf(filter)>=0) {
+          og+='<option class="'+((i&1)?"odd":"even")+'" value="/mods/'+
+            window.musicLibrary[i].songs[j].file+'">'+window.musicLibrary[i].songs[j].file+' '+
+            '<span class="filesize">('+window.musicLibrary[i].songs[j].size+' bytes)</span></option>';
+          f++;
+        }
+      }
+      og+='</optgroup>';
+    } else {
+      og+='<optgroup class="'+((i&1)?"odd":"even")+'" label="'+window.musicLibrary[i].composer+'">';
+      for(j=0;j<window.musicLibrary[i].songs.length;j++) {
+        if (filter=="" || 
+           window.musicLibrary[i].composer.toLowerCase().indexOf(filter)>=0 ||
+           window.musicLibrary[i].songs[j].file.toLowerCase().indexOf(filter)>=0) {        
+          og+='<option class="'+((i&1)?"odd":"even")+'" value="/mods/'+window.musicLibrary[i].composer+'/'+
+            window.musicLibrary[i].songs[j].file+'">'+window.musicLibrary[i].songs[j].file+' '+
+            '<span class="filesize">('+window.musicLibrary[i].songs[j].size+' bytes)</span></option>';
+          f++;
+        }
+      }
+      og+='</optgroup>';
+    }
+    if (f) o+=og;
+  }
+  $("#modfile").html(o);  
+  $("#modfile option").dblclick(function() {
+    $("#load").click();
+  });
+}
+
 $(document).ready(function() {
   var timer;
-  var module=new Protracker();
+  var module=new Modplayer();
   var oldpos=-1;
 
-  window.currentModule=$("#modfile").val();
   window.playlistPosition=0;
   window.playlistActive=false;
+  updateSelectBox(null);
   
   if(typeof(Storage) !== "undefined") {
     // read previous button states from localStorage
@@ -155,10 +208,10 @@ $(document).ready(function() {
   }
 
   module.onReady=function() {  
-    $("#modtitle").html(pad(this.title, 20));
+    $("#modtitle").html(pad(this.title, 28));
     $("#modsamples").html("");
     for(i=0;i<31;i++)
-      $("#modsamples").append("<span class=\"samplelist\" id=\"sample"+hb(i+1)+"\">"+hb(i+1)+" "+pad(this.sample[i].name, 22)+"</span>\n");
+      $("#modsamples").append("<span class=\"samplelist\" id=\"sample"+hb(i+1)+"\">"+hb(i+1)+" "+pad(this.samplenames[i], 28)+"</span>\n");
     $("#modinfo").html("");
     $("#modinfo").append("('"+this.signature+"')");
     var s=window.currentModule.split("/");
@@ -178,23 +231,24 @@ $(document).ready(function() {
       $("#next_track").addClass("inactive");
     }
     
-    var pdata="";
+    var pd="";
     for(p=0;p<this.patterns;p++) {
-      var pp, pd="<div class=\"patterndata\" id=\"pattern"+hb(p)+"\">";
+      var pp, pdata;
+      pd+="<div class=\"patterndata\" id=\"pattern"+hb(p)+"\">";
       for(i=0; i<12; i++) pd+="\n";
+      pdata=this.patterndata(p);
       for(i=0; i<64; i++) {
-        pp=i*4*this.channels;
+        pp=i*5*32;
         pd+="<span class=\"patternrow\" id=\"pattern"+hb(p)+"_row"+hb(i)+"\">"+hb(i)+"|";
         for(c=0;c<this.channels;c++) {
-          pd+=notef(this.note[p][i*this.channels+c], (this.pattern[p][pp+0]&0xf0 | this.pattern[p][pp+2]>>4), this.pattern[p][pp+2]&0x0f, this.pattern[p][pp+3], this.channels);
-          pp+=4;
+          pd+=notef(pdata[pp+c*5+0], pdata[pp+c*5+1], pdata[pp+c*5+2], pdata[pp+c*5+3], pdata[pp+c*5+4], this.channels);
         }
         pd+="</span>\n";
       }
       for(i=0; i<24; i++) pd+="\n";
-      pdata+=pd+"</div>";
+      pd+="</div>";
     }
-    $("#modpattern").html(pdata);
+    $("#modpattern").html(pd);
     
     $("#modtimer").html("ready");
   };
@@ -208,8 +262,8 @@ $(document).ready(function() {
       if (mod.paused) return;
 
       if (oldpos != mod.position) {
-        if (oldpos>=0) $("#pattern"+hb(mod.patterntable[oldpos])).removeClass("currentpattern");
-        $("#pattern"+hb(mod.patterntable[mod.position])).addClass("currentpattern");
+        if (oldpos>=0) $(".currentpattern").removeClass("currentpattern");
+        $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
       }
       if (oldrow != mod.row) {
         $("#modtimer").replaceWith("<span id=\"modtimer\">"+
@@ -222,11 +276,11 @@ $(document).ready(function() {
 
         $("#modsamples").children().removeClass("activesample");      
         for(c=0;c<mod.channels;c++)
-          if (mod.channel[c].noteon) $("#sample"+hb(mod.channel[c].sample+1)).addClass("activesample");
+          if (mod.noteon(c)) $("#sample"+hb(mod.currentsample(c)+1)).addClass("activesample");
           
-        if (oldpos>=0 && oldrow>=0) $("#pattern"+hb(mod.patterntable[oldpos])+"_row"+hb(oldrow)).removeClass("currentrow");
-        $("#pattern"+hb(mod.patterntable[mod.position])+"_row"+hb(mod.row)).addClass("currentrow");
-        $("#pattern"+hb(mod.patterntable[mod.position])).scrollTop(mod.row*16);
+        if (oldpos>=0 && oldrow>=0) $(".currentrow").removeClass("currentrow");
+        $("#pattern"+hb(mod.currentpattern())+"_row"+hb(mod.row)).addClass("currentrow");
+        $("#pattern"+hb(mod.currentpattern())).scrollTop(mod.row*16);
       }
       oldpos=mod.position;        
       oldrow=mod.row;
@@ -261,6 +315,7 @@ $(document).ready(function() {
   $("#play").click(function(){
     if (module.playing) {
       module.stop();
+      $("#pause").removeClass("down");
       return false;
     }
     module.play();
@@ -301,14 +356,14 @@ $(document).ready(function() {
         if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 2);
       } else {
         $("#modpaula").toggleClass("stereo");
-        // amiga 100% stereo
+        // normal stereo
         $("#modpaula").html("[))((]");
         module.setseparation(0);
         if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 0);
       }
     } else {
       $("#modpaula").toggleClass("down");
-      // "betterpaula" 65/35 stereo
+      // narrow stereo
       $("#modpaula").html("[)oo(]");
       module.setseparation(1);
       if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 1);
@@ -392,15 +447,11 @@ $(document).ready(function() {
     return false;
   });
 
-  $("#modfile option").dblclick(function() {
-    $("#load").click();
-  });
   
   $("#modfile").keypress(function(event) {
     if (event.keyCode==13) $("#load").click();
   });
 
-  if ($("#modfile").val()!="") module.load($("#modfile").val());
   
   $("#playlist_remove").click(function(){
     var opt=$("#playlist_box option:selected");
@@ -511,18 +562,9 @@ $(document).ready(function() {
     return false;
   });
 
-  $("#loadfilter").keydown(function(e){
-    e.which == 27 && $(this).val('');
-    $('#modfile option').show();
-    var val=$(this).val().toLowerCase();
-    if (val.length) {
-      $('#modfile option').filter(function(){
-        return $(this).text().toLowerCase().indexOf('mod.'+val)!==0;
-      }).hide();
-    }
-  });
+  $("#loadfilter").on("input", updateSelectBox);
   
-  $(document).keypress(function(ev){
+  $(document).keyup(function(ev){
     if (ev.keyCode==32) {
       if ($("#innercontainer").is(":visible")) {
         if (module.playing) {
@@ -534,6 +576,14 @@ $(document).ready(function() {
         return false;
       }
     }
+    if (ev.keyCode==27) {
+      if ($("#loadercontainer").is(":visible")) {
+        $("#load_cancel").click();
+      }
+    }
   });
-    
+  
+  // all done, load the module
+  $('#modfile option[value="'+window.currentModule+'"]').attr('selected', 'selected');
+  if ($("#modfile").val()!="") module.load($("#modfile").val());  
 });
