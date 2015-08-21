@@ -35,6 +35,7 @@ function notef(n,s,v,c,d,cc)
 
 function hb(n)
 {
+  if (typeof n == "undefined") return "00";
   var s=n.toString(16);
   if (s.length==1) s='0'+s;
   return s.toUpperCase();

@@ -49,7 +49,7 @@ option:checked {
 ::-webkit-scrollbar-thumb {
   color: #88f;
   background-color: #484;
-  border: 1px solid: #fff;
+  border: 1px solid #fff;
 }
 
 #outercontainer {
@@ -65,7 +65,7 @@ option:checked {
 
 #modsamples { white-space:pre; float:right; margin-left:8px; color: #888 }
 
-#modpattern { white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; }
+#modpattern { white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; color: #778; }
 
 #infotext { margin-top: 16px; color: #aae; }
 
@@ -94,11 +94,12 @@ option:checked {
 .note { color: #88f; }
 .sample { color: #8ff; }
 .command { color: #8f8; }
+.volume { color: #a4c; }
 
 .samplelist { background-color: #000; color: #778; }
 .activesample { background-color: #135; color: #fff; }
 
-.currentrow { background-color: #335; }
+.currentrow { background-color: #335; color: #ccc; }
 
 .filesize { color: #444; }
 
