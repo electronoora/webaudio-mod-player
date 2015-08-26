@@ -304,7 +304,7 @@ Protracker.prototype.parse = function(buffer)
   for(i=0;i<this.patterns;i++) {
     this.pattern[i]=new Uint8Array(patlen);
     this.note[i]=new Uint8Array(this.channels*64);
-    this.pattern_unpack[i]=new Uint8Array(32*64*5);
+    this.pattern_unpack[i]=new Uint8Array(this.channels*64*5);
     for(j=0;j<patlen;j++) this.pattern[i][j]=buffer[1084+i*patlen+j];
     for(j=0;j<64;j++) for(c=0;c<this.channels;c++) {
       this.note[i][j*this.channels+c]=0;
@@ -315,7 +315,7 @@ Protracker.prototype.parse = function(buffer)
     for(j=0;j<64;j++) {
       for(c=0;c<this.channels;c++) {
         var pp= j*4*this.channels+c*4;
-        var ppu=j*5*32+c*5;
+        var ppu=j*5*this.channels+c*5;
         var n=(this.pattern[i][pp]&0x0f)<<8 | this.pattern[i][pp+1];
         if (n) { n=this.note[i][j*this.channels+c]; n=(n%12)|(Math.floor(n/12)+2)<<4; }
         this.pattern_unpack[i][ppu+0]=(n)?n:255;

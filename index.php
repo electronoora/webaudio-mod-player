@@ -7,9 +7,12 @@
   // when entering the website without a mod selected, the site will randomly pick one from
   // the array below
   $defmods=array(
-    "/mods/Mantronix_and_Tip/mod.overload"
-    "/mods/Necros/point.s3m",
+    "/mods/Mantronix_and_Tip/mod.overload",
+    "/mods/Necros/point.s3m"
   );
+
+  // absolute URL path to where the modules are located - leading and trailing slashes are required!
+  $modulePath="/mods/";
 
   //
   //
@@ -35,36 +38,13 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
     <script type="text/javascript" src="/js/st3.js"></script>
     <script type="text/javascript" src="/js/ui.js"></script>
     <script type="text/javascript">
+      window.musicPath='<?php echo $modulePath; ?>';
+      window.musicLibrary=[];
 <?php
   // randomize default song  
   $defmod=$defmods[rand(0, count($defmods)-1)];
-  if (array_key_exists('mod', $_REQUEST) && $_REQUEST['mod']!="") $defmod="/mods/".$_REQUEST['mod'];
+  if (array_key_exists('mod', $_REQUEST) && $_REQUEST['mod']!="") $defmod=$_REQUEST['mod'];
   echo "      window.currentModule='".$defmod."';\n";
-  echo "      window.musicLibrary=[\n";
-
-  // songs grouped by composer
-  foreach (glob("mods/*", GLOB_ONLYDIR) as $composer) {
-    echo "      { composer:'".preg_replace('/^(.*)\//', '', $composer)."', songs:[\n";
-    $i=0;
-    $dir=opendir($composer);
-    while($mod=readdir($dir)) {
-      if (is_file($composer."/".$mod)) 
-        echo ($i++?",\n":"")."        { file:'".$mod."', size:".filesize($composer."/".$mod)." }";
-    }
-    echo "\n      ]},\n";
-    closedir($dir);
-  }
-
-  // songs by an unknown composer from the root of "mods/"
-  echo "      { composer:'Unknown', songs:[\n";
-  $dir=opendir("mods");
-  $i=0;
-  while($mod=readdir($dir)) {
-    if (is_file("mods/".$mod))
-        echo ($i++?",\n":"")."        { file:'".$mod."', size:".filesize("mods/".$mod)." }";
-  }
-  echo "\n      ]}];\n";
-  closedir($dir);
 ?>
     </script>
   </head>

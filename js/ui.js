@@ -107,7 +107,7 @@ function updateSelectBox(e)
       og+='<optgroup class="'+((i&1)?"odd":"even")+'" label="'+window.musicLibrary[i].composer+'">';
       for(j=0;j<window.musicLibrary[i].songs.length;j++) {
         if (filter=="" || window.musicLibrary[i].songs[j].file.toLowerCase().indexOf(filter)>=0) {
-          og+='<option class="'+((i&1)?"odd":"even")+'" value="/mods/'+
+          og+='<option class="'+((i&1)?"odd":"even")+'" value="'+
             window.musicLibrary[i].songs[j].file+'">'+window.musicLibrary[i].songs[j].file+' '+
             '<span class="filesize">('+window.musicLibrary[i].songs[j].size+' bytes)</span></option>';
           f++;
@@ -120,7 +120,7 @@ function updateSelectBox(e)
         if (filter=="" || 
            window.musicLibrary[i].composer.toLowerCase().indexOf(filter)>=0 ||
            window.musicLibrary[i].songs[j].file.toLowerCase().indexOf(filter)>=0) {        
-          og+='<option class="'+((i&1)?"odd":"even")+'" value="/mods/'+window.musicLibrary[i].composer+'/'+
+          og+='<option class="'+((i&1)?"odd":"even")+'" value="'+window.musicLibrary[i].composer+'/'+
             window.musicLibrary[i].songs[j].file+'">'+window.musicLibrary[i].songs[j].file+' '+
             '<span class="filesize">('+window.musicLibrary[i].songs[j].size+' bytes)</span></option>';
           f++;
@@ -143,7 +143,6 @@ $(document).ready(function() {
 
   window.playlistPosition=0;
   window.playlistActive=false;
-  updateSelectBox(null);
   
   if(typeof(Storage) !== "undefined") {
     // read previous button states from localStorage
@@ -159,11 +158,9 @@ $(document).ready(function() {
     if (localStorage["modamiga"]) {
       if (localStorage["modamiga"]=="500") {
         $("#modamiga").addClass("down");
-        $("#modamiga").html("[A500]");
         module.setamigamodel("500");
       } else {
         $("#modamiga").removeClass("down");
-        $("#modamiga").html("[1200]");
         module.setamigamodel("1200");
       }
     }
@@ -216,12 +213,12 @@ $(document).ready(function() {
     $("#modinfo").html("");
     $("#modinfo").append("('"+this.signature+"')");
     var s=window.currentModule.split("/");
-    if (s.length > 3) {
-      $("title").html(s[3]+" - Protracker module player for Web Audio");
-      window.history.pushState("object of string", "Title", "/"+s[2]+"/"+s[3]);
+    if (s.length > 1) {
+      $("title").html(s[1]+" - Protracker module player for Web Audio");
+      window.history.pushState("object of string", "Title", "/"+s[0]+"/"+s[1]);
     } else {
-      $("title").html(s[2]+" - Protracker module player for Web Audio");
-      window.history.pushState("object of string", "Title", "/"+s[2]);
+      $("title").html(s[0]+" - Protracker module player for Web Audio");
+      window.history.pushState("object of string", "Title", "/"+s[0]);
     }
     
     if (window.playlistActive) {
@@ -239,7 +236,7 @@ $(document).ready(function() {
       for(i=0; i<12; i++) pd+="\n";
       pdata=this.patterndata(p);
       for(i=0; i<64; i++) {
-        pp=i*5*32;
+        pp=i*5*this.channels;
         pd+="<span class=\"patternrow\" id=\"pattern"+hb(p)+"_row"+hb(i)+"\">"+hb(i)+"|";
         for(c=0;c<this.channels;c++) {
           pd+=notef(pdata[pp+c*5+0], pdata[pp+c*5+1], pdata[pp+c*5+2], pdata[pp+c*5+3], pdata[pp+c*5+4], this.channels);
@@ -375,11 +372,9 @@ $(document).ready(function() {
   $("#modamiga").click(function() {
     $("#modamiga").toggleClass("down");
     if ($("#modamiga").hasClass("down")) {
-      $("#modamiga").html("[A500]");
       module.setamigamodel("500");
       if(typeof(Storage) !== "undefined") localStorage.setItem("modamiga", "500");
     } else {
-      $("#modamiga").html("[1200]");    
       module.setamigamodel("1200");      
       if(typeof(Storage) !== "undefined") localStorage.setItem("modamiga", "1200");
     }  
@@ -429,7 +424,7 @@ $(document).ready(function() {
       if (!module.delayload) {
          window.currentModule=$("#modfile").val();
          window.playlistActive=false;
-         module.load($("#modfile").val());
+         module.load(musicPath+$("#modfile").val());
          clearInterval(loadInterval);
       }
     }, 200);
@@ -584,7 +579,15 @@ $(document).ready(function() {
     }
   });
   
-  // all done, load the module
-  $('#modfile option[value="'+window.currentModule+'"]').attr('selected', 'selected');
-  if ($("#modfile").val()!="") module.load($("#modfile").val());  
+  // all done, load the song library and default module
+  var request = new XMLHttpRequest();
+  request.open("GET", "/musicLibrary.php", true);
+  request.responseType = "json";
+  request.onload = function() {
+    window.musicLibrary=eval(request.response);
+    updateSelectBox(null);
+    $('#modfile option[value="'+window.currentModule+'"]').attr('selected', 'selected');
+    if ($("#modfile").val()!="") module.load(musicPath+$("#modfile").val());  
+  }
+  request.send();
 });

@@ -40,7 +40,6 @@ function Screamtracker()
   this.vu[1]=0.0;
 
   this.samplerate=44100;
-  this.ramplen=64.0;
 
   this.periodtable=new Float32Array([
     27392.0, 25856.0, 24384.0, 23040.0, 21696.0, 20480.0, 19328.0, 18240.0, 17216.0, 16256.0, 15360.0, 14496.0, 
@@ -149,6 +148,7 @@ Screamtracker.prototype.clearsong = function()
     this.sample[i].length=0;
     this.sample[i].loopstart=0;
     this.sample[i].loopend=0;
+    this.sample[i].looplength=0;
     this.sample[i].volume=64;
     this.sample[i].loop=0;
     this.sample[i].c2spd=8363;
@@ -208,15 +208,25 @@ Screamtracker.prototype.initialize = function()
     this.channel[i].volume=64;
     this.channel[i].voiceperiod=0;
     this.channel[i].voicevolume=0;
+    this.channel[i].oldvoicevolume=0;
 
     this.channel[i].semitone=12;
     this.channel[i].vibratospeed=0
     this.channel[i].vibratodepth=0
     this.channel[i].vibratopos=0;
     this.channel[i].vibratowave=0;
+
+    this.channel[i].lastoffset=0;
+    this.channel[i].lastretrig=0;
     
     this.channel[i].volramp=0;
     this.channel[i].volrampfrom=0;
+    
+    this.channel[i].trigramp=0;
+    this.channel[i].trigrampfrom=0.0;
+
+    this.channel[i].currentsample=0.0;
+    this.channel[i].lastsample=0.0;
   }
 }
 
@@ -236,7 +246,7 @@ Screamtracker.prototype.parse = function(buffer)
 
   // default panning 3/C/3/...
   for(this.channels=0,i=0;i<32;i++) {
-    if (buffer[0x0040+i] != 0xff) {
+    if (!(buffer[0x0040+i]&0x80)) {
       c=buffer[0x0040+i]&15;
       if (c<8) {
         this.pan_r[i]=0.2;
@@ -309,6 +319,7 @@ Screamtracker.prototype.parse = function(buffer)
     this.sample[i].length=buffer[offset+0x10]|buffer[offset+0x11]<<8;
     this.sample[i].loopstart=buffer[offset+0x14]|buffer[offset+0x15]<<8;
     this.sample[i].loopend=buffer[offset+0x18]|buffer[offset+0x19]<<8;
+    this.sample[i].looplength=this.sample[i].loopend-this.sample[i].loopstart;
     this.sample[i].volume=buffer[offset+0x1c];
     this.sample[i].loop=buffer[offset+0x1f]&1;
     this.sample[i].stereo=(buffer[offset+0x1f]&2)>>1;
@@ -328,13 +339,13 @@ Screamtracker.prototype.parse = function(buffer)
     var patlen=buffer[offset]|buffer[offset+1]<<8;
     var row=0, pos=0, ch=0;
   
-    this.pattern[i]=new Uint8Array(32*64*5);
-    for(row=0;row<64;row++) for(ch=0;ch<32;ch++) {
-      this.pattern[i][row*32*5 + ch*5 + 0]=255;
-      this.pattern[i][row*32*5 + ch*5 + 1]=0;
-      this.pattern[i][row*32*5 + ch*5 + 2]=255;
-      this.pattern[i][row*32*5 + ch*5 + 3]=255;
-      this.pattern[i][row*32*5 + ch*5 + 4]=0;
+    this.pattern[i]=new Uint8Array(this.channels*64*5);
+    for(row=0;row<64;row++) for(ch=0;ch<this.channels;ch++) {
+      this.pattern[i][row*this.channels*5 + ch*5 + 0]=255;
+      this.pattern[i][row*this.channels*5 + ch*5 + 1]=0;
+      this.pattern[i][row*this.channels*5 + ch*5 + 2]=255;
+      this.pattern[i][row*this.channels*5 + ch*5 + 3]=255;
+      this.pattern[i][row*this.channels*5 + ch*5 + 4]=0;
     }
     
     row=0; ch=0;
@@ -342,15 +353,21 @@ Screamtracker.prototype.parse = function(buffer)
     while(row<64) {
       if (c=buffer[offset+pos++]) {
         ch=c&31;
-        if (c&32) {
-          this.pattern[i][row*32*5 + ch*5 + 0]=buffer[offset+pos++]; // note
-          this.pattern[i][row*32*5 + ch*5 + 1]=buffer[offset+pos++]; // instrument
-        }
-        if (c&64)
-          this.pattern[i][row*32*5 + ch*5 + 2]=buffer[offset+pos++]; // volume
-        if (c&128) {
-          this.pattern[i][row*32*5 + ch*5 + 3]=buffer[offset+pos++]; // command
-          this.pattern[i][row*32*5 + ch*5 + 4]=buffer[offset+pos++]; // parameter
+        if (ch<this.channels) {
+          if (c&32) {
+            this.pattern[i][row*this.channels*5 + ch*5 + 0]=buffer[offset+pos++]; // note
+            this.pattern[i][row*this.channels*5 + ch*5 + 1]=buffer[offset+pos++]; // instrument
+          }
+          if (c&64)
+            this.pattern[i][row*this.channels*5 + ch*5 + 2]=buffer[offset+pos++]; // volume
+          if (c&128) {
+            this.pattern[i][row*this.channels*5 + ch*5 + 3]=buffer[offset+pos++]; // command
+            this.pattern[i][row*this.channels*5 + ch*5 + 4]=buffer[offset+pos++]; // parameter
+          }
+        } else {
+          if (c&32) pos+=2;
+          if (c&64) pos++;
+          if (c&128) pos+=2;
         }
       } else row++;
     }
@@ -427,17 +444,19 @@ Screamtracker.prototype.advance=function(mod) {
 Screamtracker.prototype.process_note = function(mod, p, ch) {
   var n, s, pp, pv;
 
-  pp=mod.row*5*32 + ch*5;
+  pp=mod.row*5*this.channels + ch*5;
   
   n=mod.pattern[p][pp];
   s=mod.pattern[p][pp+1];
   if (s) {
     mod.channel[ch].sample=s-1;
-    mod.channel[ch].volrampfrom=mod.channel[ch].voicevolume;
-    mod.channel[ch].volramp=0.0;
     mod.channel[ch].volume=mod.sample[s-1].volume;
     mod.channel[ch].voicevolume=mod.channel[ch].volume;
-    if (n==255 && (mod.channel[ch].samplepos > mod.sample[s-1].length)) mod.channel[ch].samplepos=0;
+    if (n==255 && (mod.channel[ch].samplepos > mod.sample[s-1].length)) {
+      mod.channel[ch].trigramp=0.0;
+      mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
+      mod.channel[ch].samplepos=0;
+    }
   }
 
   if (n<254) {
@@ -452,9 +471,9 @@ Screamtracker.prototype.process_note = function(mod, p, ch) {
       mod.channel[ch].voiceperiod=mod.channel[ch].period;
       mod.channel[ch].samplepos=0;
       if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
-      
-      mod.channel[ch].volrampfrom=0;
-      mod.channel[ch].volramp=0.0;
+
+      mod.channel[ch].trigramp=0.0;
+      mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
 
       mod.channel[ch].flags|=3; // force sample speed recalc
       mod.channel[ch].noteon=1;      
@@ -463,16 +482,10 @@ Screamtracker.prototype.process_note = function(mod, p, ch) {
     mod.channel[ch].slideto=pv;
   } else if (n==254) {
     mod.channel[ch].noteon=0; // sample off
-    mod.channel[ch].volrampfrom=mod.channel[ch].voicevolume;
-    mod.channel[ch].volramp=0.0;
     mod.channel[ch].voicevolume=0;    
   }
   
   if (mod.pattern[p][pp+2]<=64) {
-    if (!s) {
-      mod.channel[ch].volrampfrom=mod.channel[ch].voicevolume;
-      mod.channel[ch].volramp=0.0;
-    }
     mod.channel[ch].volume=mod.pattern[p][pp+2];
     mod.channel[ch].voicevolume=mod.channel[ch].volume;              
   }
@@ -482,7 +495,7 @@ Screamtracker.prototype.process_note = function(mod, p, ch) {
 
 // mix an audio buffer with data
 Screamtracker.prototype.mix = function(ape, mod) {
-  var f, fl, fr, pv;
+  var f, fl, fr, fs, pv;
   var p, pp, n, nn;
 
   outp=new Float32Array(2);
@@ -507,87 +520,101 @@ Screamtracker.prototype.mix = function(ape, mod) {
       
         // calculate playback position
         p=mod.patterntable[mod.position];
-        pp=mod.row*5*32 + ch*5;
+        pp=mod.row*5*mod.channels + ch*5;
+
+        if (mod.flags&3) mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
 
         if (mod.flags&2) { // new row
           mod.channel[ch].command=mod.pattern[p][pp+3];
           mod.channel[ch].data=mod.pattern[p][pp+4];
-          if (!(mod.channel[ch].command==0x0e && (mod.channel[ch].data&0xf0)==0xd0)) { // note delay?
-            mod.process_note(mod, p, ch);            
+          if (!(mod.channel[ch].command==0x13 && (mod.channel[ch].data&0xf0)==0xd0)) { // note delay?
+            mod.process_note(mod, p, ch);
           }
         }
         
         // kill empty samples
         if (!mod.sample[mod.channel[ch].sample].length) mod.channel[ch].noteon=0;
 
-        // effects        
+        // run effects on each new tick
         if (mod.flags&1) {
           if (mod.channel[ch].command < 27) {
             if (!mod.tick) {
-              // process only on tick 0
+              // process only on tick 0 effects
               mod.effects_t0[mod.channel[ch].command](mod, ch);
             } else {
               mod.effects_t1[mod.channel[ch].command](mod, ch);    
             }
+          }
+
+          // advance vibrato on each new tick
+          mod.channel[ch].vibratopos+=mod.channel[ch].vibratospeed*2
+          mod.channel[ch].vibratopos&=0xff;
+        }
+        
+        if (mod.flags&3) {
+          if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
+            mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
+            mod.channel[ch].volramp=0.0;
           }
         }
 
         // recalc sample speed if voiceperiod has changed
         if ((mod.channel[ch].flags&1 || mod.flags&2) && mod.channel[ch].voiceperiod)
           mod.channel[ch].samplespeed=(14317056.0/mod.channel[ch].voiceperiod) / mod.samplerate;
-        
-        // advance vibrato on each new tick
-        if (mod.flags&1) {
-          mod.channel[ch].vibratopos+=mod.channel[ch].vibratospeed*2
-          mod.channel[ch].vibratopos&=0xff;
-        }
 
         // add channel output to left/right master outputs
         fl=0.0; fr=0.0;
         if (mod.channel[ch].noteon || (!mod.channel[ch].noteon && mod.channel[ch].volramp<1.0)) {
           if (mod.sample[mod.channel[ch].sample].length > mod.channel[ch].samplepos) {
-            fl=mod.sample[mod.channel[ch].sample].data[Math.floor(mod.channel[ch].samplepos)];
+            fl=mod.channel[ch].lastsample;
            
-            // interpolate towards next sample (also when looping)
+            // interpolate towards current sample
             f=mod.channel[ch].samplepos-Math.floor(mod.channel[ch].samplepos);
-            if (mod.sample[mod.channel[ch].sample].loop && (mod.sample[mod.channel[ch].sample].loopend-mod.channel[ch].samplepos)<1)
-            {
-              fr=mod.sample[mod.channel[ch].sample].data[Math.floor(mod.sample[mod.channel[ch].sample].loopstart)];            
-            } else if ((mod.channel[ch].samplepos+1)<mod.sample[mod.channel[ch].sample].length)
-              fr=mod.sample[mod.channel[ch].sample].data[Math.floor(mod.channel[ch].samplepos+1)];
-            fl=f*fr+(1.0-f)*fl;
-
-            // ramp volume changes over 64 samples to avoid clicks (grr, there are still some left)
+            fs=mod.sample[mod.channel[ch].sample].data[Math.floor(mod.channel[ch].samplepos)];
+            fl=f*fs + (1.0-f)*fl;
+            
+            // smooth out discontinuities from retrig and sample offset
+            if (mod.channel[ch].trigramp<1.0) {
+              fl=mod.channel[ch].trigramp*fl + (1.0-mod.channel[ch].trigramp)*mod.channel[ch].trigrampfrom;
+              mod.channel[ch].trigramp+=1.0/128.0;
+            }
+            mod.channel[ch].currentsample=fl;
+            
+            // ramp volume changes over 64 samples to avoid clicks
             fr=fl*(mod.channel[ch].voicevolume/64.0);
             if (mod.channel[ch].volramp<1.0) {
               fl=mod.channel[ch].volramp*fr + (1.0-mod.channel[ch].volramp)*(fl*(mod.channel[ch].volrampfrom/64.0));
-              mod.channel[ch].volramp+=(1.0/mod.ramplen);
+              mod.channel[ch].volramp+=(1.0/64.0);
             } else {
               fl=fr;
             }
-            
+
             // pan samples
             fr=fl*mod.pan_r[ch];
             fl*=mod.pan_l[ch];
           }
           outp[0]+=fl;
           outp[1]+=fr;
+          
+          var oldpos=mod.channel[ch].samplepos;
           mod.channel[ch].samplepos+=mod.channel[ch].samplespeed;
-        }
-        mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(fl+fr));
+          if (Math.floor(mod.channel[ch].samplepos) > Math.floor(oldpos)) mod.channel[ch].lastsample=fs;
 
-        // loop or end samples
-        if (mod.channel[ch].noteon) {
+          // loop or stop sample?          
           if (mod.sample[mod.channel[ch].sample].loop) {
             if (mod.channel[ch].samplepos >= mod.sample[mod.channel[ch].sample].loopend) {
-              mod.channel[ch].samplepos-=(mod.sample[mod.channel[ch].sample].loopend - mod.sample[mod.channel[ch].sample].loopstart);
+              mod.channel[ch].samplepos-=mod.sample[mod.channel[ch].sample].looplength;
+              mod.channel[ch].lastsample=mod.channel[ch].currentsample;
             }
           } else {
             if (mod.channel[ch].samplepos >= mod.sample[mod.channel[ch].sample].length) {
               mod.channel[ch].noteon=0;
             }
           }
+        } else {
+          mod.channel[ch].currentsample=0.0;
         }
+        mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(fl+fr));
 
         // clear channel flags
         mod.channel[ch].flags=0;
@@ -644,7 +671,6 @@ Screamtracker.prototype.effect_t0_c=function(mod, ch) { // pattern break
 
 Screamtracker.prototype.effect_t0_d=function(mod, ch) { // volume slide
   if (mod.channel[ch].data) mod.channel[ch].volslide=mod.channel[ch].data;
-
   if ((mod.channel[ch].volslide&0x0f)==0x0f) { // DxF fine up
     mod.channel[ch].voicevolume+=mod.channel[ch].volslide>>4;
   } else if ((mod.channel[ch].volslide>>4)==0x0f) { // DFx fine down
@@ -716,8 +742,12 @@ Screamtracker.prototype.effect_t0_n=function(mod, ch) { // -
 }
 
 Screamtracker.prototype.effect_t0_o=function(mod, ch) { // set sample offset
-  if (mod.channel[ch].data*256 < mod.sample[mod.channel[ch].sample].length) {
-    mod.channel[ch].samplepos=mod.channel[ch].data*256;
+  if (mod.channel[ch].data) mod.channel[ch].lastoffset=mod.channel[ch].data;
+  
+  if (mod.channel[ch].lastoffset*256 < mod.sample[mod.channel[ch].sample].length) {
+    mod.channel[ch].samplepos=mod.channel[ch].lastoffset*256;
+    mod.channel[ch].trigramp=0.0;
+    mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
   }
 }
 
@@ -725,6 +755,7 @@ Screamtracker.prototype.effect_t0_p=function(mod, ch) { // -
 }
 
 Screamtracker.prototype.effect_t0_q=function(mod, ch) { // retrig note
+  if (mod.channel[ch].data) mod.channel[ch].lastretrig=mod.channel[ch].data;
 }
 
 Screamtracker.prototype.effect_t0_r=function(mod, ch) { // tremolo
@@ -739,7 +770,7 @@ Screamtracker.prototype.effect_t0_t=function(mod, ch) { // set tempo
   if (mod.channel[ch].data > 32) mod.bpm=mod.channel[ch].data;
 }
 
-Screamtracker.prototype.effect_t0_u=function(mod, ch) { // fibe vibrato
+Screamtracker.prototype.effect_t0_u=function(mod, ch) { // fine vibrato
 }
 
 Screamtracker.prototype.effect_t0_v=function(mod, ch) { // set global volume
@@ -921,18 +952,20 @@ Screamtracker.prototype.effect_t1_p=function(mod, ch) { // -
 }
 
 Screamtracker.prototype.effect_t1_q=function(mod, ch) { // retrig note
-  if (mod.tick%(mod.channel[ch].data&0x0f)==0) {
+  if (mod.tick%(mod.channel[ch].lastretrig&0x0f)==0) {
     mod.channel[ch].samplepos=0;
-    switch (mod.channel[ch].data>>4) {
+    mod.channel[ch].trigramp=0.0;
+    mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
+    switch (mod.channel[ch].lastretrig>>4) {
       case 6:
       case 7:
       case 14:
       case 15:
-        mod.channel[ch].volume=Math.floor(mod.channel[ch].volume*mod.retrigvoltab[mod.channel[ch].data>>4]);
+        mod.channel[ch].volume=Math.floor(mod.channel[ch].volume*mod.retrigvoltab[mod.channel[ch].lastretrig>>4]);
         break;
         
       default:
-        mod.channel[ch].volume+=mod.retrigvoltab[mod.channel[ch].data>>4];
+        mod.channel[ch].volume+=mod.retrigvoltab[mod.channel[ch].lastretrig>>4];
         break;
     }
     if (mod.channel[ch].volume<0) mod.channel[ch].volume=0;
@@ -997,7 +1030,10 @@ Screamtracker.prototype.effect_t1_sb=function(mod, ch) { // loop pattern
 }
 
 Screamtracker.prototype.effect_t1_sc=function(mod, ch) { // note cut
-  if (mod.tick==(mod.channel[ch].data&0x0f)) mod.channel[ch].volume=0;
+  if (mod.tick==(mod.channel[ch].data&0x0f)) {
+    mod.channel[ch].volume=0;
+    mod.channel[ch].voicevolume=0;
+  }
 }
 
 Screamtracker.prototype.effect_t1_sd=function(mod, ch) { // note delay

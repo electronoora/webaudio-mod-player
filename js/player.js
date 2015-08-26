@@ -100,7 +100,11 @@ Modplayer.prototype.load = function(url)
           asset.filter=asset.player.filter;
           asset.samplenames=new Array(32)
           for(i=0;i<32;i++) asset.samplenames[i]="";
-          for(i=0;i<asset.player.sample.length;i++) asset.samplenames[i]=asset.player.sample[i].name;
+          if (asset.format=='xm' || asset.format=='it') {
+            for(i=0;i<asset.player.instrument.length;i++) asset.samplenames[i]=asset.player.instrument[i].name;
+          } else {
+            for(i=0;i<asset.player.sample.length;i++) asset.samplenames[i]=asset.player.sample[i].name;
+          }
 
           // set player variables from wrapper
           asset.player.separation=asset.separation;
@@ -227,12 +231,12 @@ Modplayer.prototype.setautostart = function(st)
 
 
 
-// set amiga model - changes fixed filter state
+// set amiga model - changes lowpass filter state
 Modplayer.prototype.setamigamodel = function(amiga)
 {
   if (amiga=="600" || amiga=="1200" || amiga=="4000") {
     this.amiga500=false;
-    if (this.filterNode) this.filterNode.frequency.value=28867;
+    if (this.filterNode) this.filterNode.frequency.value=22050;
   } else {
     this.amiga500=true;
     if (this.filterNode) this.filterNode.frequency.value=6000;
@@ -301,14 +305,28 @@ Modplayer.prototype.patterndata = function(pn)
   if (this.format=='mod') {
     patt=new Uint8Array(this.player.pattern_unpack[pn]);
     for(i=0;i<64;i++) for(c=0;c<this.player.channels;c++) {
-      patt[i*5*32+c*5+3]+=0x37;
-      if (patt[i*5*32+c*5+3]<0x41) patt[i*5*32+c*5+3]-=0x07;
+      patt[i*5*this.channels+c*5+3]+=0x37;
+      if (patt[i*5*this.channels+c*5+3]<0x41) patt[i*5*this.channels+c*5+3]-=0x07;
     }
-  } else if (this.format='s3m') {
+  } else if (this.format=='s3m') {
     patt=new Uint8Array(this.player.pattern[pn]);
     for(i=0;i<64;i++) for(c=0;c<this.player.channels;c++) {
-      if (patt[i*5*32+c*5+3]==255) patt[i*5*32+c*5+3]=0x2e;
-      else patt[i*5*32+c*5+3]+=0x40;    
+      if (patt[i*5*this.channels+c*5+3]==255) patt[i*5*this.channels+c*5+3]=0x2e;
+      else patt[i*5*this.channels+c*5+3]+=0x40;    
+    }
+  } else if (this.format=='xm') {
+    patt=new Uint8Array(this.player.pattern[pn]);
+
+    for(i=0;i<this.player.patternlen[pn];i++) for(c=0;c<this.player.channels;c++) {
+      if (patt[i*5*this.channels+c*5+0]<97) {
+        patt[i*5*this.channels+c*5+0]=(patt[i*5*this.channels+c*5+0]%12)|(Math.floor(patt[i*5*this.channels+c*5+0]/12)<<4);
+      }
+      if (patt[i*5*this.channels+c*5+2]>=0x50 && patt[i*5*this.channels+c*5+2]<=0x5e) patt[i*5*this.channels+c*5+2]+=0xa0;
+      if (patt[i*5*this.channels+c*5+3]<0x0a) {
+        patt[i*5*this.channels+c*5+3]+=0x30;
+      } else {
+        patt[i*5*this.channels+c*5+3]+=0x41-0x0a;
+      }
     }
   }
   return patt;
@@ -329,6 +347,7 @@ Modplayer.prototype.noteon = function(ch)
 Modplayer.prototype.currentsample = function(ch)
 {
   if (ch>=this.channels) return 0;
+  if (this.format=="xm" || this.format=="it") return this.player.channel[ch].instrument;
   return this.player.channel[ch].sample;
 }
 
@@ -351,7 +370,7 @@ Modplayer.prototype.createContext = function()
   if (this.amiga500) {
     this.filterNode.frequency.value=6000;
   } else {
-    this.filterNode.frequency.value=28867;
+    this.filterNode.frequency.value=22050;
   }
 
   // "LED filter" at 3275kHz - off by default
