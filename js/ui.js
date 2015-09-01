@@ -23,13 +23,13 @@ function notef(n,s,v,c,d,cc)
       "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
   if (cc<=16)
     return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
-      (c&d ? 
+      (c ? 
        ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
        ( s ? ("<span class=\"sample\">"+hb(s)+"</span>.") : ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>."):("...") ) )
       )+"|";
   return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : 
                 (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
-                (c&d ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>"):("...")))
+                (c ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>"):("...")))
          );
 }
 
@@ -47,6 +47,22 @@ function pad(s,l)
   if (ps.length > l) ps=ps.substring(0,l-1);
   while (ps.length < l) ps+=" ";
   return ps;
+}
+
+function vu(l)
+{
+  var f=Math.round(l*20);
+  var b="";
+
+  b='<span style="color:#afa;">';
+  for(i=0;i<10;i++) b+=(i<f)?"&#x00BB;":"&nbsp;";
+  b+='</span><span style="color:#fea;">';
+  for(;i<16;i++) b+=(i<f)?"&#x00BB;":"&nbsp;";
+  b+='</span><span style="color:#faa;">';
+  for(;i<20;i++) b+=(i<f)?"&#x00BB;":"&nbsp;";  
+  b+='</span>';
+
+  return b;
 }
 
 function addToPlaylist(song)
@@ -136,6 +152,32 @@ function updateSelectBox(e)
   });
 }
 
+function setVisualization(mod, v)
+{
+  var visNames=["[none]", "[trks]", "[chvu]"];
+  switch (v) {
+    case 0:
+      $("#modvis").removeClass("down");
+      $(".currentpattern").removeClass("currentpattern");
+      $("#modchannels").hide();
+      break;
+      
+    case 1:
+      $("#modvis").addClass("down");
+      if (mod && mod.playing) $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
+      $("#modchannels").hide();
+      break;
+      
+    case 2:
+      $("#modvis").addClass("down");
+      $(".currentpattern").removeClass("currentpattern");      
+      $("#modchannels").show();
+      break;
+  }
+  $("#modvis").html(visNames[v]);
+  window.moduleVis=v;
+}
+
 $(document).ready(function() {
   var timer;
   var module=new Modplayer();
@@ -143,6 +185,12 @@ $(document).ready(function() {
 
   window.playlistPosition=0;
   window.playlistActive=false;
+  
+  if (mobileSafari) {
+    setVisualization(null, 0);
+  } else {
+    setVisualization(null, 1);
+  }
   
   if(typeof(Storage) !== "undefined") {
     // read previous button states from localStorage
@@ -203,6 +251,8 @@ $(document).ready(function() {
       var playlist=JSON.parse(localStorage["playlist"]);
       for(i=0;i<playlist.length;i++) addToPlaylist(playlist[i]);
     }
+    if (localStorage["modvis"])
+      setVisualization(null, parseInt(localStorage["modvis"]));
   }
 
   module.onReady=function() {  
@@ -247,23 +297,33 @@ $(document).ready(function() {
       pd+="</div>";
     }
     $("#modpattern").html(pd);
-    
     $("#modtimer").html("ready");
   };
 
   module.onPlay=function() {
     var oldpos=-1, oldrow=-1;
     $("#play").html("[stop]");
+    if (!this.paused) $("#pause").removeClass("down");
     timer=setInterval(function(){
       var i,c;
       var mod=module;
-      if (mod.paused) return;
 
-      if (oldpos != mod.position) {
+      if (window.moduleVis==2) {
+        var chvu=mod.channelvu();
+        var txt, txt0="<br/>", txt1="<br/>";
+        for(ch=0;ch<mod.channels;ch++) {
+          txt='<span class="channelnr">'+hb(ch)+'</span> ['+vu(chvu[ch])+'] '+
+              '<span class="hl">'+hb(mod.currentsample(ch))+'</span>:<span class="channelsample">'+pad(mod.samplenames[mod.currentsample(ch)], 28)+"</span><br/>";
+          if (ch&1) txt0+=txt; else txt1+=txt;
+        }
+        $("#even-channels").html(txt0);
+        $("#odd-channels").html(txt1);
+      }
+      if (oldpos != mod.position && window.moduleVis==1) {
         if (oldpos>=0) $(".currentpattern").removeClass("currentpattern");
         $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
       }
-      if (oldrow != mod.row) {
+      if (oldrow != mod.row || oldpos != mod.position) {
         $("#modtimer").replaceWith("<span id=\"modtimer\">"+
           "pos <span class=\"hl\">"+hb(mod.position)+"</span>/<span class=\"hl\">"+hb(mod.songlen)+"</span> "+
           "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">3f</span> "+
@@ -287,7 +347,8 @@ $(document).ready(function() {
 
   module.onStop=function() {
     $("#modsamples").children().removeClass("activesample");
-    $("#modchannels").html("");
+    $("#even-channels").html("");
+    $("#odd-channels").html("");
     $(".currentpattern").removeClass("currentpattern");
     clearInterval(timer);
     $("#modtimer").html("stopped");
@@ -366,6 +427,13 @@ $(document).ready(function() {
       module.setseparation(1);
       if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 1);
     }
+    return false;
+  });
+  
+  $("#modvis").click(function() {
+    var v=(window.moduleVis+1)%3;
+    setVisualization(module, v);
+    if(typeof(Storage) !== "undefined") localStorage.setItem("modvis", v);
     return false;
   });
   
@@ -561,20 +629,35 @@ $(document).ready(function() {
   $("#loadfilter").on("input", updateSelectBox);
   
   $(document).keyup(function(ev){
-    if (ev.keyCode==32) {
-      if ($("#innercontainer").is(":visible")) {
+    // keyboard shortcuts for main player screen
+    if ($("#innercontainer").is(":visible")) {
+      if (ev.keyCode==32) { // start/pause playback with space
         if (module.playing) {
           $("#pause").click();
         } else {
           $("#play").click();
         }
-        event.preventDefault();
-        return false;
+        event.preventDefault(); return false;
+      }
+      if (ev.keyCode==76) { // 'L' to open loading screen
+        $("#load_song").click();
+        event.preventDefault(); return false;      
+      }
+      if (ev.keyCode==37) { // left to jump to previous order
+        $("#go_back").click();
+        event.preventDefault(); return false;
+      }
+      if (ev.keyCode==39) { // right to jump to next order
+        $("#go_fwd").click();
+        event.preventDefault(); return false;        
       }
     }
-    if (ev.keyCode==27) {
-      if ($("#loadercontainer").is(":visible")) {
+   
+    // keyboard shortcuts for load/playlist screen
+    if ($("#loadercontainer").is(":visible")) {
+      if (ev.keyCode==27) {
         $("#load_cancel").click();
+        event.preventDefault(); return false;
       }
     }
   });

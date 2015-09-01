@@ -19,12 +19,18 @@
     $d=array();
     $d['composer']=preg_replace('/^(.*)\//', '', $composer);
     $songs=array();
+
     $dir=opendir($composer);
-    while($mod=readdir($dir)) {
+    $mods=array();
+    while($mod=readdir($dir)) $mods[]=$mod; 
+    sort($mods);
+    foreach($mods as $mod) {
       if (is_file($composer."/".$mod)) 
       $songs[]=array('file'=>$mod, 'size'=>filesize($composer."/".$mod));
     }
     closedir($dir);
+
+
     $d['songs']=$songs;
     $library[]=$d;
   }
@@ -34,7 +40,10 @@
   $songs=Array();
   $dir=opendir("mods");
   $i=0;
-  while($mod=readdir($dir)) {
+  $mods=array();
+  while($mod=readdir($dir)) $mods[]=$mod;
+  sort($mods);
+  foreach($mods as $mod) {
     if (is_file("mods/".$mod))
       $songs[]=array('file'=>$mod, 'size'=>filesize($songpath."/".$mod));
   }

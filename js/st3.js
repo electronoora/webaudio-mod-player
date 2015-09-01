@@ -53,7 +53,10 @@ function Screamtracker()
       107.0,   101.0,    95.0,    90.0,    85.0,    80.0,    75.0,    71.0,    67.0,    63.0,    60.0,    56.0
   ]);
 
-  this.retrigvoltab=new Float32Array([0, -1, -2, -4, -8, -16, .66, .5, 1, 2, 4, 8, 16, 1.5, 2]);
+  this.retrigvoltab=new Float32Array([
+    0, -1, -2, -4, -8, -16, 0.66, 0.5,
+    0,  1,  2,  4,  8,  16, 1.50, 2.0
+  ]);
   
   this.pan_r=new Float32Array(32);
   this.pan_l=new Float32Array(32);
@@ -363,6 +366,9 @@ Screamtracker.prototype.parse = function(buffer)
           if (c&128) {
             this.pattern[i][row*this.channels*5 + ch*5 + 3]=buffer[offset+pos++]; // command
             this.pattern[i][row*this.channels*5 + ch*5 + 4]=buffer[offset+pos++]; // parameter
+            if (!this.pattern[i][row*this.channels*5 + ch*5 + 3] || this.pattern[i][row*this.channels*5 + ch*5 + 3]>26) {
+              this.pattern[i][row*this.channels*5 + ch*5 + 3]=255;
+            }
           }
         } else {
           if (c&32) pos+=2;
@@ -563,7 +569,7 @@ Screamtracker.prototype.mix = function(ape, mod) {
           mod.channel[ch].samplespeed=(14317056.0/mod.channel[ch].voiceperiod) / mod.samplerate;
 
         // add channel output to left/right master outputs
-        fl=0.0; fr=0.0;
+        fl=0.0; fr=0.0; fs=0.0;
         if (mod.channel[ch].noteon || (!mod.channel[ch].noteon && mod.channel[ch].volramp<1.0)) {
           if (mod.sample[mod.channel[ch].sample].length > mod.channel[ch].samplepos) {
             fl=mod.channel[ch].lastsample;
@@ -756,6 +762,7 @@ Screamtracker.prototype.effect_t0_p=function(mod, ch) { // -
 
 Screamtracker.prototype.effect_t0_q=function(mod, ch) { // retrig note
   if (mod.channel[ch].data) mod.channel[ch].lastretrig=mod.channel[ch].data;
+  mod.effect_t1_q(mod, ch);
 }
 
 Screamtracker.prototype.effect_t0_r=function(mod, ch) { // tremolo
@@ -952,24 +959,18 @@ Screamtracker.prototype.effect_t1_p=function(mod, ch) { // -
 }
 
 Screamtracker.prototype.effect_t1_q=function(mod, ch) { // retrig note
-  if (mod.tick%(mod.channel[ch].lastretrig&0x0f)==0) {
+  if ((mod.tick%(mod.channel[ch].lastretrig&0x0f))==0) {
     mod.channel[ch].samplepos=0;
     mod.channel[ch].trigramp=0.0;
     mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
-    switch (mod.channel[ch].lastretrig>>4) {
-      case 6:
-      case 7:
-      case 14:
-      case 15:
-        mod.channel[ch].volume=Math.floor(mod.channel[ch].volume*mod.retrigvoltab[mod.channel[ch].lastretrig>>4]);
-        break;
-        
-      default:
-        mod.channel[ch].volume+=mod.retrigvoltab[mod.channel[ch].lastretrig>>4];
-        break;
+    var v=mod.channel[ch].lastretrig>>4;
+    if ((v&7) >= 6) {
+      mod.channel[ch].voicevolume=Math.floor(mod.channel[ch].voicevolume*mod.retrigvoltab[v]);
+    } else {
+      mod.channel[ch].voicevolume+=mod.retrigvoltab[v];
     }
-    if (mod.channel[ch].volume<0) mod.channel[ch].volume=0;
-    if (mod.channel[ch].volume>64) mod.channel[ch].volume=64;
+    if (mod.channel[ch].voicevolume<0) mod.channel[ch].voicevolume=0;
+    if (mod.channel[ch].voicevolume>64) mod.channel[ch].voicevolume=64;
   }
 }
 

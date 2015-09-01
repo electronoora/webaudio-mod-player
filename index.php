@@ -71,14 +71,18 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
           <span style="white-space:pre;">     </span>
           <a href="#" title="Repeat song" id="modrepeat">[rept]</a>
           <a class="down" title="Stereo separation" href="#" id="modpaula">[)oo(]</a>
-          <a class="down" title="Amiga A500 lowpass filter" href="#" id="modamiga">[filt]</a>
+          <a class="down" title="Visualization type" href="#" id="modvis">[trks]</a>
+          <a title="Amiga A500 lowpass filter" href="#" id="modamiga">[filt]</a>
           <a href="#" id="load_song">[load song]</a>
         </div> 
+        <div id="modchannels"><div id="even-channels"></div><div id="odd-channels"></div></div>
         <div id="modpattern"></div>
         <div style="clear:both"></div>
         <div id="infotext">
           The player has been tested on Chrome 14+, Firefox 24+, Safari 6+ and Edge 20+ so far. <span style="color:#faa">Disable AdBlock if you get cuts or stuttering!</span>
-          Email <a href="mailto:firehawk@haxor.fi" style="color:#cce">firehawk@haxor.fi</a> to report bugs, send suggestions or request songs. :) Source code available in <a target="_blank" href="https://github.com/jhalme/webaudio-mod-player">GitHub</a>.
+          To report bugs, suggest features or request songs, contact me on <a href="https://twitter.com/janihalme" style="color:#cce;">Twitter</a> or
+          email <a href="mailto:firehawk@haxor.fi" style="color:#cce">firehawk@haxor.fi</a>.
+          Source code available on <a style="color:#cce;" target="_blank" href="https://github.com/jhalme/webaudio-mod-player">GitHub</a>.
         </div>
       </div>
       
@@ -113,10 +117,8 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
         </div>
         
         <div style="clear:both"></div>
-<!--        <br/><br/>Choose a song from the listbox and click 'load song' or doubleclick song to open it into the player. -->
       </div>
-      
-      
+
     </div>
   </body>
 </html>

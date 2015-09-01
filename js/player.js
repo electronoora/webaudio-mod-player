@@ -78,6 +78,9 @@ Modplayer.prototype.load = function(url)
       case 's3m':
         this.player=new Screamtracker();
         break;
+      case 'xm':
+        this.player=new Fasttracker();
+        break;
     }
     
     this.player.onReady=this.loadSuccess;
@@ -201,6 +204,8 @@ Modplayer.prototype.jump = function(step)
     if (this.player.position<0) this.player.position=0;
     if (this.player.position >= this.player.songlen) this.stop();
   }
+  this.position=this.player.position;
+  this.row=this.player.row;
 }
 
 
@@ -298,15 +303,24 @@ Modplayer.prototype.currentpattern = function()
 }
 
 
-// get current pattern in unpacked format (note, sample, volume, command, data)
+// get current pattern in standard unpacked format (note, sample, volume, command, data)
+// note: 254=noteoff, 255=no note
+// sample: 0=no instrument, 1..255=sample number
+// volume: 255=no volume set, 0..64=set volume, 65..239=ft2 volume commands
+// command: 0x2e=no command, 0..36=effect command
+// data: 0..255
 Modplayer.prototype.patterndata = function(pn)
 {
   var i, c, patt;
   if (this.format=='mod') {
     patt=new Uint8Array(this.player.pattern_unpack[pn]);
     for(i=0;i<64;i++) for(c=0;c<this.player.channels;c++) {
-      patt[i*5*this.channels+c*5+3]+=0x37;
-      if (patt[i*5*this.channels+c*5+3]<0x41) patt[i*5*this.channels+c*5+3]-=0x07;
+      if (patt[i*5*this.channels+c*5+3]==0 && patt[i*5*this.channels+c*5+4]==0) {
+        patt[i*5*this.channels+c*5+3]=0x2e;
+      } else {
+        patt[i*5*this.channels+c*5+3]+=0x37;      
+        if (patt[i*5*this.channels+c*5+3]<0x41) patt[i*5*this.channels+c*5+3]-=0x07;
+      }
     }
   } else if (this.format=='s3m') {
     patt=new Uint8Array(this.player.pattern[pn]);
@@ -316,16 +330,18 @@ Modplayer.prototype.patterndata = function(pn)
     }
   } else if (this.format=='xm') {
     patt=new Uint8Array(this.player.pattern[pn]);
-
     for(i=0;i<this.player.patternlen[pn];i++) for(c=0;c<this.player.channels;c++) {
-      if (patt[i*5*this.channels+c*5+0]<97) {
+      if (patt[i*5*this.channels+c*5+0]<97)
         patt[i*5*this.channels+c*5+0]=(patt[i*5*this.channels+c*5+0]%12)|(Math.floor(patt[i*5*this.channels+c*5+0]/12)<<4);
-      }
       if (patt[i*5*this.channels+c*5+2]>=0x50 && patt[i*5*this.channels+c*5+2]<=0x5e) patt[i*5*this.channels+c*5+2]+=0xa0;
-      if (patt[i*5*this.channels+c*5+3]<0x0a) {
-        patt[i*5*this.channels+c*5+3]+=0x30;
+      if (patt[i*5*this.channels+c*5+3]==0 && patt[i*5*this.channels+c*5+4]==0) {
+        patt[i*5*this.channels+c*5+3]=0x2e;
       } else {
-        patt[i*5*this.channels+c*5+3]+=0x41-0x0a;
+        if (patt[i*5*this.channels+c*5+3]<0x0a) {
+          patt[i*5*this.channels+c*5+3]+=0x30;
+        } else {
+          patt[i*5*this.channels+c*5+3]+=0x41-0x0a;
+        }
       }
     }
   }

@@ -57,7 +57,7 @@ option:checked {
   margin: 0 auto 0 auto;
 }
 
-#headercontainer { background-color:#0cc; color:#000; margin-bottom:8px; padding-top: 1px; padding-bottom: 1px; }
+#headercontainer { background-color:#0bc; color:#000; margin-bottom:8px; padding-top: 1px; padding-bottom: 1px; }
 
 #modtitle { white-space: pre; color: #fff; }
 #modinfo { color: #aaa; }
@@ -113,3 +113,20 @@ option:checked {
 .currentpattern {
   display: inline-block !important;
 }
+
+#modchannels {
+ white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; color: #99b; 
+ display: none;
+}
+
+#even-channels {
+  width: 50%;
+  float:right;
+}
+#odd-channels {
+  width: 50%;
+  float:left;
+}
+
+.channelnr { color:#778; }
+.channelsample { color:#778; }
