@@ -6,30 +6,31 @@ var notelist=new Array("C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-
 
 function notef(n,s,v,c,d,cc)
 {
-  if (cc<=8)
+  if (cc<=8) // 14 chars per channel (max 112)
     return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+" </span>") : ("... "))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span> ") : (".. "))+
       ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span> "):(".. "))+
       "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
-  if (cc<=10)
+  if (cc<=10) // 11 chars (max 110)
     return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span>") : (".."))+
       ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):(".."))+
       "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
-  if (cc<=12)
+  if (cc<=12) // 9 chars (max 108)
     return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span>") :
       ((v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):("..")))+
       "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
-  if (cc<=16)
+  if (cc<=16) // 7 chars (max 112)
     return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
-      (c ? 
+      (c<0x2e ? 
        ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
        ( s ? ("<span class=\"sample\">"+hb(s)+"</span>.") : ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>."):("...") ) )
       )+"|";
+  // 3 chars (max 96)
   return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : 
                 (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
-                (c ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>"):("...")))
+                (c<0x2e ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>"):("...")))
          );
 }
 
@@ -309,10 +310,9 @@ $(document).ready(function() {
       var mod=module;
 
       if (window.moduleVis==2) {
-        var chvu=mod.channelvu();
         var txt, txt0="<br/>", txt1="<br/>";
         for(ch=0;ch<mod.channels;ch++) {
-          txt='<span class="channelnr">'+hb(ch)+'</span> ['+vu(chvu[ch])+'] '+
+          txt='<span class="channelnr">'+hb(ch)+'</span> ['+vu(mod.chvu[ch])+'] '+
               '<span class="hl">'+hb(mod.currentsample(ch))+'</span>:<span class="channelsample">'+pad(mod.samplenames[mod.currentsample(ch)], 28)+"</span><br/>";
           if (ch&1) txt0+=txt; else txt1+=txt;
         }
@@ -485,13 +485,13 @@ $(document).ready(function() {
     } else {
       module.setautostart(false);
     }
-    $("#modtimer").html("loading");
     $("#loadercontainer").hide();
     $("#innercontainer").show();
     var loadInterval=setInterval(function(){
       if (!module.delayload) {
          window.currentModule=$("#modfile").val();
          window.playlistActive=false;
+         $("#modtimer").html("loading");         
          module.load(musicPath+$("#modfile").val());
          clearInterval(loadInterval);
       }

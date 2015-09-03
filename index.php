@@ -36,6 +36,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
     <script type="text/javascript" src="/js/player.js"></script>
     <script type="text/javascript" src="/js/pt.js"></script>
     <script type="text/javascript" src="/js/st3.js"></script>
+    <script type="text/javascript" src="/js/ft2.js"></script>
     <script type="text/javascript" src="/js/ui.js"></script>
     <script type="text/javascript">
       window.musicPath='<?php echo $modulePath; ?>';

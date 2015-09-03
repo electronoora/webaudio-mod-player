@@ -5,7 +5,7 @@
 
 function Modplayer()
 {
-  this.supportedformats=new Array('mod', 's3m');
+  this.supportedformats=new Array('mod', 's3m', 'xm');
 
   this.url="";
   this.format="s3m";
@@ -37,6 +37,8 @@ function Modplayer()
   this.context=null;
   this.samplerate=44100;
   this.bufferlen=4096;
+
+  this.chvu=new Float32Array(32);
 
   // format-specific player
   this.player=null;
@@ -142,6 +144,9 @@ Modplayer.prototype.play = function()
     this.player.flags=1+2;
     this.player.playing=true;
     this.playing=true;
+
+    this.chvu=new Float32Array(this.player.channels);
+    for(i=0;i<this.player.channels;i++) this.chvu[i]=0.0;
 
     this.onPlay();
 
@@ -279,21 +284,6 @@ Modplayer.prototype.popsyncevent = function()
   if (this.player) return this.player.syncqueue.pop();
 }
 
-
-
-// get channel vu meters from player
-Modplayer.prototype.channelvu = function()
-{
-  if (this.player) return this.player.chvu;
-}
-
-
-
-// get output vu meters from player
-Modplayer.prototype.vu = function()
-{
-  if (this.player) return this.player.vu;
-}
 
 
 // ger current pattern number
@@ -445,7 +435,11 @@ Modplayer.prototype.mix = function(ape) {
     if (mod.delayfirst>0) mod.delayfirst--;
     mod.delayload=0;
   } else {
-    // fill buffer with silence
+    // fill buffer with silence?
   }
+  
+  // update this.chvu from player channel vu
+  for(i=0;i<mod.player.channels;i++)
+    mod.chvu[i]=mod.chvu[i]*0.25 + mod.player.chvu[i]*0.75;
   
 }

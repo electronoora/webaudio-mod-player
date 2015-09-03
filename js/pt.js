@@ -1,72 +1,11 @@
 /*
-  amiga protracker module player for web audio api
+  protracker module player for web audio api
   (c) 2012-2015 firehawk/tda  (firehawk@haxor.fi)
-  
-  originally hacked together in a weekend, so please excuse
-  me for the spaghetti code. :)
-
-  feel free to use this player in your website/demo/whatever
-  if you find it useful. drop me an email if you do.
-
-  AMIGAAAAAAAAH!!
-
-  all code licensed under MIT license:
-  http://opensource.org/licenses/MIT
-
-  kinda sorta changelog:
-  (aug 2015)
-  - some speed optimizations
-  - removed properties and methods whose implementation was moved
-    into the generic wrapper class.
-  (nov 2014)
-  - changed the vibrato again. now using linear depth instead of
-    +/- semitone relative to nearest note.
-  - pre-scan first row and set filter on load to avoid glitch with
-    songs that enable filter immediately on start
-  (sep 2014)
-  - fixed bug with E8x sync and added 80x to also function for sync
-    events due to problems with some protracker versions (thanks spot)
-  (aug 2014)
-  - added sync event queue for E8x commands
-  - changed the amiga fixed filter model to allow changes at runtime
-  - three stereo separation modes now, 0=amiga, 1=65/35, 2=mono
-  - a few bugfixes, thanks spot^uprough and esau^traktor for reporting
-    * fixed bug in slide-to-note when 300 with no preceeding 3xy
-    * fixed vibrato depth on ticks 1+ to match tick 0
-    * added boolean variable for disabling A500 fixed lowpass filter
-    * added a delay on module start, number of buffers selectable
-    * fixed sample loop discarding pointer overflow
-  (may 2014)
-  - added boolean variable for the amiga led filter for ui stuff
-  (jan 2014)
-  - disabled ee0 filter command for tracks with over 4 channels to
-    make mod.dope play correctly
-  (oct 2013)
-  - added support for firefox 24
-  (apr 2013)
-  - changed the logic for pattern break/jump. mod.pattern_skank now
-    plays correctly.
-  (feb 2013)
-  - fixed NaN samples with mod.fractured and mod.multicolour (thanks Aegis!)
-  (jan 2013)
-  - fixed vibrato amplitude (was half of what it should be, apparently)
-  - fixed to work on safari again (thanks Matt Diamond @ stackoverflow.com)
-  (dec 2012)
-  - replaced effect switch-statement with jumptables
-  - fixed clicks (bad loops, empty samples)
-  - fixed playback bug with sample-only rows
-  - added amiga 500 lowpass filters (not 100% authentic, though)
-  - added compressor to output
-  - latest safari has broken web audio so chrome-only for now
-  (aug 2012)
-  - first version written from scratch
 
   todo:
-  - pattern looping is way broken in mod.black_queen
+  - pattern looping is broken (see mod.black_queen)
   - properly test EEx delay pattern
-  - implement the rest of the effects
-  - optimize for more speed!! SPEEEED!!
-    * switch to fixed point sample pointers, Math.floor() is _slow_ on iOS
+
 */
 
 // constructor for protracker player object
@@ -86,10 +25,6 @@ function Protracker()
   this.separation=1;
 
   this.syncqueue=[];
-
-  this.vu=new Float32Array(2);
-  this.vu[0]=0.0;
-  this.vu[1]=0.0;
 
   this.samplerate=44100;
 
@@ -259,8 +194,8 @@ Protracker.prototype.parse = function(buffer)
     default:
       return false;
   }
-  this.vu=new Array();
-  for(i=0;i<this.channels;i++) this.vu[i]=0.0;
+  this.chvu=new Array();
+  for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
   
   i=0;
   while(buffer[i] && i<20)
@@ -433,9 +368,6 @@ Protracker.prototype.mix = function(ape, mod) {
 
   outp=new Float32Array(2);
 
-  mod.vu[0]=0.0;
-  mod.vu[1]=0.0;
-
   var bufs=new Array(ape.outputBuffer.getChannelData(0), ape.outputBuffer.getChannelData(1));
   var buflen=ape.outputBuffer.length;
   for(var s=0;s<buflen;s++)
@@ -562,8 +494,6 @@ Protracker.prototype.mix = function(ape, mod) {
     // scale down to -1..1 range and update left/right vu
     outp[0]*=(1.0/mod.channels);
     outp[1]*=(1.0/mod.channels);
-    mod.vu[0]=Math.max(mod.vu[0], Math.abs(outp[0]));
-    mod.vu[1]=Math.max(mod.vu[1], Math.abs(outp[1]));
 
     // done - store to output buffer
     bufs[0][s]=outp[0];
