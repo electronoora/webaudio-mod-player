@@ -1,21 +1,11 @@
 /*
-suparhyparexperimental s3m player - (c) firehawk/tda
+  scream tracker 3 module player for web audio api      
+  (c) 2012-2015 firehawk/tda  (firehawk@haxor.fi)
 
-features:
-- software mixing with wide dynamic range
-- soft clipping of audio peaks
-- 32-bit floating point sample interpolation
-- ultraclick(tm) mitigation with volume ramps
-- supports most ST3 effects and quirks
-- runs in a frickin' web browser! wtf?!? works
-  on safari, edge and chrome. maybe firefox, too.
-
-todo:
-- work harder to remove more ultraclicks(tm)
-- optimize things. you know. things.
-- fix crash at pos 54 (0x36) in dune's control-e
-- are Exx, Fxx and Gxx supposed to share the
-  command data memory? need to test this.
+  todo:
+  - fix crash at pos 54 (0x36) in dune's control-e
+  - are Exx, Fxx and Gxx supposed to share a single
+    command data memory?
 
 */
 
@@ -35,10 +25,6 @@ function Screamtracker()
 
   this.syncqueue=[];
 
-  this.vu=new Float32Array(2);
-  this.vu[0]=0.0;
-  this.vu[1]=0.0;
-
   this.samplerate=44100;
 
   this.periodtable=new Float32Array([
@@ -54,8 +40,8 @@ function Screamtracker()
   ]);
 
   this.retrigvoltab=new Float32Array([
-    0, -1, -2, -4, -8, -16, 0.66, 0.5,
-    0,  1,  2,  4,  8,  16, 1.50, 2.0
+     0, -1, -2, -4, -8, -16, 0.66, 0.5,
+     0,  1,  2,  4,  8,  16, 1.50, 2.0
   ]);
   
   this.pan_r=new Float32Array(32);
@@ -247,8 +233,12 @@ Screamtracker.prototype.parse = function(buffer)
   if (this.signature != "SCRM") return false;
   if (buffer[0x001d] != 0x10) return false;
 
+  // get channel count
+  for(this.channels=0,i=0;i<32;i++,this.channels++) 
+    if (buffer[0x0040+i]&0x80) break;
+
   // default panning 3/C/3/...
-  for(this.channels=0,i=0;i<32;i++) {
+  for(i=0;i<32;i++) {
     if (!(buffer[0x0040+i]&0x80)) {
       c=buffer[0x0040+i]&15;
       if (c<8) {
@@ -258,7 +248,6 @@ Screamtracker.prototype.parse = function(buffer)
         this.pan_r[i]=0.8;
         this.pan_l[i]=0.2;
       }
-      this.channels++;
     }
   }
   
@@ -357,6 +346,7 @@ Screamtracker.prototype.parse = function(buffer)
       if (c=buffer[offset+pos++]) {
         ch=c&31;
         if (ch<this.channels) {
+          if (ch>max_ch) max_ch=ch;
           if (c&32) {
             this.pattern[i][row*this.channels*5 + ch*5 + 0]=buffer[offset+pos++]; // note
             this.pattern[i][row*this.channels*5 + ch*5 + 1]=buffer[offset+pos++]; // instrument
@@ -506,9 +496,6 @@ Screamtracker.prototype.mix = function(ape, mod) {
 
   outp=new Float32Array(2);
 
-  mod.vu[0]=0.0;
-  mod.vu[1]=0.0;
-
   var bufs=new Array(ape.outputBuffer.getChannelData(0), ape.outputBuffer.getChannelData(1));
   var buflen=ape.outputBuffer.length;
   for(var s=0;s<buflen;s++)
@@ -601,7 +588,7 @@ Screamtracker.prototype.mix = function(ape, mod) {
           }
           outp[0]+=fl;
           outp[1]+=fr;
-          
+
           var oldpos=mod.channel[ch].samplepos;
           mod.channel[ch].samplepos+=mod.channel[ch].samplespeed;
           if (Math.floor(mod.channel[ch].samplepos) > Math.floor(oldpos)) mod.channel[ch].lastsample=fs;
@@ -645,8 +632,6 @@ Screamtracker.prototype.mix = function(ape, mod) {
     t=(mod.volume/64.0);
     outp[0]*=t; outp[0]/=mod.mixval; outp[0]=0.5*(Math.abs(outp[0]+0.975)-Math.abs(outp[0]-0.975));
     outp[1]*=t; outp[1]/=mod.mixval; outp[1]=0.5*(Math.abs(outp[1]+0.975)-Math.abs(outp[1]-0.975));
-    mod.vu[0]=Math.max(mod.vu[0], Math.abs(outp[0]));
-    mod.vu[1]=Math.max(mod.vu[1], Math.abs(outp[1]));
 
     // done - store to output buffer
     bufs[0][s]=outp[0];
@@ -762,7 +747,7 @@ Screamtracker.prototype.effect_t0_p=function(mod, ch) { // -
 
 Screamtracker.prototype.effect_t0_q=function(mod, ch) { // retrig note
   if (mod.channel[ch].data) mod.channel[ch].lastretrig=mod.channel[ch].data;
-  mod.effect_t1_q(mod, ch);
+  mod.effect_t1_q(mod, ch); // to retrig also on lines with no note but Qxy command
 }
 
 Screamtracker.prototype.effect_t0_r=function(mod, ch) { // tremolo
