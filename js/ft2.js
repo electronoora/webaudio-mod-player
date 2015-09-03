@@ -10,6 +10,7 @@
   - enable pan envelopes
   - implement volume column effect commands
   - implement missing ft2 commands G-Z
+  - implement instrument vibrato
   - amiga periods sound kinda off
   - is decrement/increment period by parameter*16 correct for
     portamentos? it seems to sound about right but FT2 documentation
@@ -24,6 +25,8 @@
   - http://sid.ethz.ch/debian/milkytracker/milkytracker-0.90.85%2Bdfsg/resources/reference/xm-form.txt
   - ftp://ftp.modland.com/pub/documents/format_documentation/Tracker%20differences%20for%20Coders.txt
   - http://wiki.openmpt.org/Manual:_Compatible_Playback
+
+  greets to guru, alfred and ccr for their work figuring out the .xm format. :)
 
 */
 
@@ -249,6 +252,7 @@ Fasttracker.prototype.parse = function(buffer)
   if (buffer[37] != 0x1a) return false;
   this.signature="X.M.";
   this.trackerversion=le_word(buffer, 58);
+  if (this.trackerversion < 0x0104) return false; // older versions not currently supported
 
   // song title
   i=0;
@@ -352,9 +356,9 @@ Fasttracker.prototype.parse = function(buffer)
       
       // pre-interpolate the envelopes to arrays of [0..1] float32 values which
       // are stepped through at a rate of one per tick
-      this.instrument[i].volenv=new Float32Array(256);
-      this.instrument[i].panenv=new Float32Array(256);
-      for(j=0;j<256;j++) {
+      this.instrument[i].volenv=new Float32Array(325);
+      this.instrument[i].panenv=new Float32Array(325);
+      for(j=0;j<325;j++) {
         var p, delta;
         
         p=0;
@@ -369,17 +373,17 @@ Fasttracker.prototype.parse = function(buffer)
       }
       
       // volume envelope parameters
-      this.instrument[i].volenvlen=tmp_volenv[ buffer[offset+225] ][0];
-      this.instrument[i].volsustain=tmp_volenv[ buffer[offset+227] ][0];
-      this.instrument[i].volloopstart=tmp_volenv[ buffer[offset+228] ][0];
-      this.instrument[i].volloopend=tmp_volenv[ buffer[offset+229] ][0];
+      this.instrument[i].volenvlen=tmp_volenv[buffer[offset+225]-1][0];
+      this.instrument[i].volsustain=tmp_volenv[buffer[offset+227]][0];
+      this.instrument[i].volloopstart=tmp_volenv[buffer[offset+228]][0];
+      this.instrument[i].volloopend=tmp_volenv[buffer[offset+229]][0];
       this.instrument[i].voltype=buffer[offset+233]; // 1=enabled, 2=sustain, 4=loop
 
-      // pan envelope parameters      
-      this.instrument[i].panenvlen=tmp_panenv[ buffer[offset+226] ][0];
-      this.instrument[i].pansustain=tmp_panenv[ buffer[offset+230] ][0];
-      this.instrument[i].panloopstart=tmp_panenv[ buffer[offset+231] ][0];
-      this.instrument[i].panloopend=tmp_panenv[ buffer[offset+232] ][0];
+      // pan envelope parameters
+      this.instrument[i].panenvlen=tmp_panenv[buffer[offset+226]-1][0];
+      this.instrument[i].pansustain=tmp_panenv[buffer[offset+230]][0];
+      this.instrument[i].panloopstart=tmp_panenv[buffer[offset+231]][0];
+      this.instrument[i].panloopend=tmp_panenv[buffer[offset+232]][0];
       this.instrument[i].pantype=buffer[offset+234];
       
       // vibrato
@@ -502,45 +506,49 @@ Fasttracker.prototype.advance=function(mod) {
     for(var ch=0;ch<mod.channels;ch++) {
       var i=mod.channel[ch].instrument;
 
-      // volume envelope, if enabled
+      // volume envelope, if enabled (also fadeout)
       if (mod.instrument[i].voltype&1) {
         mod.channel[ch].volenvpos++;      
+
         if (mod.channel[ch].noteon &&
-            mod.instrument[i].voltype&2 &&
+            (mod.instrument[i].voltype&2) &&
             mod.channel[ch].volenvpos > mod.instrument[i].volsustain)
           mod.channel[ch].volenvpos=mod.instrument[i].volsustain;
-        if (mod.instrument[i].voltype&4 &&
+
+        if ((mod.instrument[i].voltype&4) &&
             mod.channel[ch].volenvpos > mod.instrument[i].volloopend)
           mod.channel[ch].volenvpos=mod.instrument[i].volloopstart;
+
         if (mod.channel[ch].volenvpos > mod.instrument[i].volenvlen)
           mod.channel[ch].volenvpos=mod.instrument[i].volenvlen;
-        if (mod.channel[ch].volenvpos>255) mod.channel[ch].volenvpos=255;
+
+        if (mod.channel[ch].volenvpos>324) mod.channel[ch].volenvpos=324;
+
+        // fadeout if note is off
+        if (!mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) {
+          mod.channel[ch].fadeoutpos-=mod.instrument[i].volfadeout;
+          if (mod.channel[ch].fadeoutpos<0) mod.channel[ch].fadeoutpos=0;
+        }
       }
 
       // pan envelope, if enabled
       if (mod.instrument[i].pantype&1) {
         mod.channel[ch].panenvpos++;      
+
         if (mod.channel[ch].noteon &&
             mod.instrument[i].pantype&2 &&
             mod.channel[ch].panenvpos > mod.instrument[i].pansustain)
           mod.channel[ch].panenvpos=mod.instrument[i].pansustain;
+
         if (mod.instrument[i].pantype&4 &&
             mod.channel[ch].panenvpos > mod.instrument[i].panloopend)
           mod.channel[ch].panenvpos=mod.instrument[i].panloopstart;
+
         if (mod.channel[ch].panenvpos > mod.instrument[i].panenvlen)
           mod.channel[ch].panenvpos=mod.instrument[i].panenvlen;
-        if (mod.channel[ch].panenvpos>255) mod.channel[ch].panenvpos=255;
-      }
 
-      // fadeout if vol envelope is enabled and note is off
-      if (!mod.channel[ch].noteon && mod.instrument[i].voltype&1 && mod.channel[ch].fadeoutpos) {
-        if (mod.channel[ch].fadeoutpos > mod.instrument[i].volfadeout) {
-          mod.channel[ch].fadeoutpos-=mod.instrument[i].volfadeout;
-        } else {
-          mod.channel[ch].fadeoutpos=0;
-        }
+        if (mod.channel[ch].panenvpos>324) mod.channel[ch].panenvpos=324;
       }
-      
     }
   }
   
@@ -633,6 +641,8 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
       mod.channel[ch].flags|=3; // force sample speed recalc
       mod.channel[ch].noteon=1;      
       mod.channel[ch].fadeoutpos=65535;
+      mod.channel[ch].volenvpos=0;
+      mod.channel[ch].panenvpos=0;
     }
     // in either case, set the slide to note target to note period
     mod.channel[ch].slideto=pv;
