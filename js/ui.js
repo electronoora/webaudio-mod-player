@@ -469,7 +469,7 @@ $(document).ready(function() {
     var s=document.getElementById("modfile");
     var i=s.selectedIndex;
     s[i].selected=false;
-    s[(i<(s.length-4))?(i+4):(s.length-1)].selected=true;
+    s[(i<(s.length-12))?(i+12):(s.length-1)].selected=true;
     s[i].selected=true;
     return false;
   });
@@ -661,7 +661,7 @@ $(document).ready(function() {
       }
     }
   });
-  
+
   // all done, load the song library and default module
   var request = new XMLHttpRequest();
   request.open("GET", "/musicLibrary.php", true);
@@ -669,8 +669,16 @@ $(document).ready(function() {
   request.onload = function() {
     window.musicLibrary=eval(request.response);
     updateSelectBox(null);
-    $('#modfile option[value="'+window.currentModule+'"]').attr('selected', 'selected');
-    if ($("#modfile").val()!="") module.load(musicPath+$("#modfile").val());  
+
+    if (window.defaultComposer != "") {
+      $("#loadfilter").val(window.defaultComposer);
+      updateSelectBox(null);
+      $("#modfile optgroup[label='"+window.defaultComposer+"'] > option:first").attr('selected', 'selected');
+      $("#load_song").click();
+    } else {
+      $('#modfile option[value="'+window.currentModule+'"]').attr('selected', 'selected');
+      if ($("#modfile").val()!="") module.load(musicPath+$("#modfile").val());  
+    }
   }
   request.send();
 });

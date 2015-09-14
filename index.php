@@ -7,8 +7,16 @@
   // when entering the website without a mod selected, the site will randomly pick one from
   // the array below
   $defmods=array(
-    "/mods/Mantronix_and_Tip/mod.overload",
-    "/mods/Necros/point.s3m"
+    "Necros/point_of_departure.s3m",
+    "Skaven/autonomous.s3m",
+    "Dune/x14.s3m",
+    "Purple_Motion/2nd_pm.s3m",
+    "Mantronix_and_Tip/mod.overload",
+    "Lizardking/mod.desert_dawn",
+    "Jester/mod.elysium",
+    "Uncle_Tom/mod.occ-san-geen",
+    "Captain/mod.beyond_music",
+    "Groo/mod.electrification"
   );
 
   // absolute URL path to where the modules are located - leading and trailing slashes are required!
@@ -45,7 +53,13 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
   // randomize default song  
   $defmod=$defmods[rand(0, count($defmods)-1)];
   if (array_key_exists('mod', $_REQUEST) && $_REQUEST['mod']!="") $defmod=$_REQUEST['mod'];
-  echo "      window.currentModule='".$defmod."';\n";
+  if (array_key_exists('composer', $_REQUEST) && $_REQUEST['composer']!="") {
+    echo "      window.currentModule='';\n";
+    echo "      window.defaultComposer='".$_REQUEST['composer']."';\n";
+  } else {
+    echo "      window.currentModule='".$defmod."';\n";
+    echo "      window.defaultComposer='';\n";
+  }
 ?>
     </script>
   </head>
