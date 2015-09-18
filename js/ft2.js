@@ -182,8 +182,8 @@ Fasttracker.prototype.initialize = function()
   this.flags=0;
 
   this.volume=64;
-  this.speed=this.initSpeed;
-  this.bpm=this.initBPM;
+  if (this.initSpeed) this.speed=this.initSpeed;
+  if (this.initBPM) this.bpm=this.initBPM;
   this.breakrow=0;
   this.patternjump=0;
   this.patterndelay=0;
@@ -271,28 +271,37 @@ Fasttracker.prototype.parse = function(buffer)
   this.initSpeed=le_word(buffer, offset+16);
   this.initBPM=le_word(buffer, offset+18);
 
-  for(i=0;i<256;i++) this.patterntable[i]=buffer[offset+20+i];
-
-  // load and unpack patterns
-  offset+=hdrlen; // initial offset for patterns
-  this.pattern=new Array(this.patterns);
-  this.patternlen=new Array(this.patterns);
-  i=0;
-  while(i<this.patterns) {
-    this.patternlen[i]=le_word(buffer, offset+5);
-    datalen=le_word(buffer, offset+7);
-    offset+=le_dword(buffer, offset); // jump over header
-
+  var maxpatt=0;
+  for(i=0;i<256;i++) {
+    this.patterntable[i]=buffer[offset+20+i];
+    if (this.patterntable[i]>maxpatt) maxpatt=this.patterntable[i];
+  }
+  maxpatt++;
+  
+  // allocate pattern data and initialize them all
+  this.pattern=new Array(maxpatt); //this.patterns);
+  this.patternlen=new Array(maxpatt); //this.patterns);
+  for(i=0;i<maxpatt;i++) {
     // initialize the pattern to defaults prior to unpacking
+    this.patternlen[i]=64;
     this.pattern[i]=new Uint8Array(this.channels*this.patternlen[i]*5);
     for(row=0;row<this.patternlen[i];row++) for(ch=0;ch<this.channels;ch++) {
       this.pattern[i][row*this.channels*5 + ch*5 + 0]=255; // note (255=no note)
       this.pattern[i][row*this.channels*5 + ch*5 + 1]=0; // instrument
-      this.pattern[i][row*this.channels*5 + ch*5 + 2]=0 // volume
+      this.pattern[i][row*this.channels*5 + ch*5 + 2]=255 // volume
       this.pattern[i][row*this.channels*5 + ch*5 + 3]=0; // command
       this.pattern[i][row*this.channels*5 + ch*5 + 4]=0; // parameter
     }
-    
+  }
+
+  // load and unpack patterns
+  offset+=hdrlen; // initial offset for patterns
+  i=0;
+  while(i<this.patterns) {
+    this.patternlen[i]=le_word(buffer, offset+5);
+    this.pattern[i]=new Uint8Array(this.channels*this.patternlen[i]*5);
+    datalen=le_word(buffer, offset+7);
+    offset+=le_dword(buffer, offset); // jump over header
     j=0; k=0;
     while(j<datalen) {
       c=buffer[offset+j++];
@@ -323,6 +332,7 @@ Fasttracker.prototype.parse = function(buffer)
     offset+=j;
     i++;
   }
+  this.patterns=maxpatt;
   
   // instruments
   this.instrument=new Array(this.instruments);    
@@ -484,10 +494,10 @@ Fasttracker.prototype.calcperiod=function(mod, note, finetune) {
   note-=1;
   if (mod.amigaperiods) {
     // amiga periods
-    var ft=finetune/16.0;
-    var p1=mod.periodtable[ ((note%12)  )*8 + Math.floor(ft/16.0) ];
-    var p2=mod.periodtable[ ((note%12)+1)*8 + Math.floor(ft/16.0) ];
-    ft=(ft/16.0) - Math.floor(ft/16.0);
+    var ft=Math.floor(finetune/16.0);
+    var p1=mod.periodtable[ 8 + ((note%12)  )*8 + ft ]; //Math.floor(ft/16.0) ];
+    var p2=mod.periodtable[ 8 + ((note%12)+1)*8 + ft ]; //Math.floor(ft/16.0) ];
+    ft=(finetune/16.0) - ft; //Math.floor(ft/16.0);
     pv=((1.0-ft)*p1 + ft*p2)*( 16.0/Math.pow(2, Math.floor(note/12)-1) ); // todo: why does octave need -1 to sound correct?
   } else {
     // linear
