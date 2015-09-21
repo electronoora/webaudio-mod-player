@@ -348,7 +348,8 @@ Screamtracker.prototype.parse = function(buffer)
         ch=c&31;
         if (ch<this.channels) {
           if (ch>max_ch) {
-            for(j=0;j<this.songlen;j++) if (this.patterntable[j]==i) max_ch=ch; // only if pattern is actually used
+            for(j=0;j<this.songlen;j++) if (this.patterntable[j]==i) 
+              max_ch=ch; // only if pattern is actually used
           }
           if (c&32) {
             this.pattern[i][row*this.channels*5 + ch*5 + 0]=buffer[offset+pos++]; // note
@@ -375,7 +376,7 @@ Screamtracker.prototype.parse = function(buffer)
 
   // how many channels had actually pattern data on them? trim off the extra channels
   var oldch=this.channels;
-  this.channels=max_ch;
+  this.channels=max_ch+1;
   for(i=0;i<this.patNum;i++) {
     var oldpat=new Uint8Array(this.pattern[i]);
     this.pattern[i]=new Uint8Array(this.channels*64*5);
