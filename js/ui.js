@@ -36,7 +36,7 @@ function notef(n,s,v,c,d,cc)
   return ((n<255) ? prn(n) : 
     (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
     ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
-    ((v<=64) ? ("<span class=\"volume\">"+hb(v)+"</span>"):("...")))));
+    ((v<=64) ? (" <span class=\"volume\">"+hb(v)+"</span>"):("...")))));
 }
 
 function hb(n)
