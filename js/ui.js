@@ -7,41 +7,36 @@ var notelist=new Array("C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-
 function notef(n,s,v,c,d,cc)
 {
   function prn(n) { return (n==254)?"===":("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>"); }
-  
-  if (cc<=8) return // 14 chars per channel (max 112)
-      ((n<255) ? prn(n) : ("... "))+
-      (s ? ("<span class=\"sample\">"+hb(s)+"</span> ") : (".. "))+
-      ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span> "):(".. "))+
-      "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+
+  // 14 chars per channel (max 112)  
+  if (cc<=8) return ((n<255) ? (prn(n)+" ") : ("... "))+
+    (s ? ("<span class=\"sample\">"+hb(s)+"</span> ") : (".. "))+
+    ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span> "):(".. "))+
+    "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
       
-  if (cc<=10) return // 11 chars (max 110)
-      ((n<255) ? prn(n) : ("..."))+
-      (s ? ("<span class=\"sample\">"+hb(s)+"</span>") : (".."))+
-      ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):(".."))+
-      "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+  // 11 chars (max 110)
+  if (cc<=10) return ((n<255) ? prn(n) : ("..."))+
+    (s ? ("<span class=\"sample\">"+hb(s)+"</span>") : (".."))+
+    ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):(".."))+
+    "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
       
-  if (cc<=12) return // 9 chars (max 108)
-      ((n<255) ? prn(n) : ("..."))+
-      (s ? ("<span class=\"sample\">"+hb(s)+"</span>") :
-      ((v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):("..")))+
-      "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+  // 9 chars (max 108)
+  if (cc<=12) return ((n<255) ? prn(n) : ("..."))+
+    (s ? ("<span class=\"sample\">"+hb(s)+"</span>") :
+    ((v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):("..")))+
+    "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
       
-  if (cc<=16) return // 7 chars (max 112)
-      ((n<255) ? prn(n) : ("..."))+
-      (c<0x2e ? 
-       ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
-       ( s ? ("<span class=\"sample\">"+hb(s)+"</span>.") : ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>."):("...") ) )
-      )+"|";
+  // 7 chars (max 112)
+  if (cc<=16) return ((n<255) ? prn(n) : ("..."))+
+    ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
+    ( s ? ("<span class=\"sample\">"+hb(s)+"</span>.") : ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>."):("...")))
+    )+"|";
       
   // 3 chars (max 96)
   return ((n<255) ? prn(n) : 
-                    (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
-                         ((c<0x2e) ?
-                          ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
-                          ("...")
-                         )
-                    )
-         );
+    (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
+    ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
+    ((v<=64) ? ("<span class=\"volume\">"+hb(v)+"</span>"):("...")))));
 }
 
 function hb(n)
