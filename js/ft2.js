@@ -598,7 +598,7 @@ Fasttracker.prototype.advance=function(mod) {
       }
     }
   }
-  if (mod.row>=64) {
+  if (mod.row>=mod.patternlen[mod.patterntable[mod.position]]) {
     mod.position++;
     mod.row=0;
     mod.flags|=4;

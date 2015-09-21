@@ -6,31 +6,41 @@ var notelist=new Array("C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-
 
 function notef(n,s,v,c,d,cc)
 {
-  if (cc<=8) // 14 chars per channel (max 112)
-    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+" </span>") : ("... "))+
+  function prn(n) { return (n==254)?"===":("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>"); }
+  
+  if (cc<=8) return // 14 chars per channel (max 112)
+      ((n<255) ? prn(n) : ("... "))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span> ") : (".. "))+
       ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span> "):(".. "))+
       "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
-  if (cc<=10) // 11 chars (max 110)
-    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
+      
+  if (cc<=10) return // 11 chars (max 110)
+      ((n<255) ? prn(n) : ("..."))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span>") : (".."))+
       ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):(".."))+
       "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
-  if (cc<=12) // 9 chars (max 108)
-    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
+      
+  if (cc<=12) return // 9 chars (max 108)
+      ((n<255) ? prn(n) : ("..."))+
       (s ? ("<span class=\"sample\">"+hb(s)+"</span>") :
       ((v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):("..")))+
       "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
-  if (cc<=16) // 7 chars (max 112)
-    return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : ("..."))+
+      
+  if (cc<=16) return // 7 chars (max 112)
+      ((n<255) ? prn(n) : ("..."))+
       (c<0x2e ? 
        ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
        ( s ? ("<span class=\"sample\">"+hb(s)+"</span>.") : ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>."):("...") ) )
       )+"|";
+      
   // 3 chars (max 96)
-  return ((n<254) ? ("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>") : 
-                (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
-                (c<0x2e ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>"):("...")))
+  return ((n<255) ? prn(n) : 
+                    (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
+                         ((c<0x2e) ?
+                          ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
+                          ("...")
+                         )
+                    )
          );
 }
 
@@ -286,7 +296,7 @@ $(document).ready(function() {
       pd+="<div class=\"patterndata\" id=\"pattern"+hb(p)+"\">";
       for(i=0; i<12; i++) pd+="\n";
       pdata=this.patterndata(p);
-      for(i=0; i<64; i++) {
+      for(i=0; i<(pdata.length/(5*this.channels)); i++) {
         pp=i*5*this.channels;
         pd+="<span class=\"patternrow\" id=\"pattern"+hb(p)+"_row"+hb(i)+"\">"+hb(i)+"|";
         for(c=0;c<this.channels;c++) {
