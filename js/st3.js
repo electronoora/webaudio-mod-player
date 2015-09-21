@@ -325,6 +325,7 @@ Screamtracker.prototype.parse = function(buffer)
   }
   
   // load and unpack patterns
+  var max_ch=0;
   this.pattern=new Array();
   for(i=0;i<this.patNum;i++) {
     var offset=(buffer[0x0060+this.ordNum+this.insNum*2+i*2]|buffer[0x0060+this.ordNum+this.insNum*2+i*2+1]<<8)*16;
@@ -346,7 +347,9 @@ Screamtracker.prototype.parse = function(buffer)
       if (c=buffer[offset+pos++]) {
         ch=c&31;
         if (ch<this.channels) {
-          if (ch>max_ch) max_ch=ch;
+          if (ch>max_ch) {
+            for(j=0;j<this.songlen;j++) if (this.patterntable[j]==i) max_ch=ch; // only if pattern is actually used
+          }
           if (c&32) {
             this.pattern[i][row*this.channels*5 + ch*5 + 0]=buffer[offset+pos++]; // note
             this.pattern[i][row*this.channels*5 + ch*5 + 1]=buffer[offset+pos++]; // instrument
@@ -369,6 +372,23 @@ Screamtracker.prototype.parse = function(buffer)
     }
   }
   this.patterns=this.patNum;
+
+  // how many channels had actually pattern data on them? trim off the extra channels
+  var oldch=this.channels;
+  this.channels=max_ch;
+  for(i=0;i<this.patNum;i++) {
+    var oldpat=new Uint8Array(this.pattern[i]);
+    this.pattern[i]=new Uint8Array(this.channels*64*5);
+    for(j=0;j<64;j++) {
+      for(c=0;c<this.channels;c++) {
+        this.pattern[i][j*this.channels*5+c*5+0]=oldpat[j*oldch*5+c*5+0];
+        this.pattern[i][j*this.channels*5+c*5+1]=oldpat[j*oldch*5+c*5+1];
+        this.pattern[i][j*this.channels*5+c*5+2]=oldpat[j*oldch*5+c*5+2];
+        this.pattern[i][j*this.channels*5+c*5+3]=oldpat[j*oldch*5+c*5+3];
+        this.pattern[i][j*this.channels*5+c*5+4]=oldpat[j*oldch*5+c*5+4];
+      }
+    }
+  }
 
   this.ready=true;
   this.loading=false;
