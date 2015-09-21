@@ -68,8 +68,8 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
       <div id="headercontainer">
         <div style="margin-left:8px;float:left">MOD/S3M module player for Web Audio</div>
         <div style="margin-right:8px;float:right">(c) 2012-2015 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
-        <div style="clear:both;"></div>
       </div>
+      <div style="clear:both;"></div>
       <div id="innercontainer">
         <div id="modsamples"><?php for($i=0;$i<31;$i++) echo "\n"; ?></div>
         <div style="position:relative;top:8px;margin-bottom:8px;">
