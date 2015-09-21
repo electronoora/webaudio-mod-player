@@ -68,7 +68,8 @@ function Fasttracker()
       538.0, 535.0, 532.0, 528.0, 524.0, 520.0, 516.0, 513.0,  // G#4
       508.0, 505.0, 502.0, 498.0, 494.0, 491.0, 487.0, 484.0,  // A-4
       480.0, 477.0, 474.0, 470.0, 467.0, 463.0, 460.0, 457.0,  // A#4
-      453.0, 450.0, 447.0, 445.0, 442.0, 439.0, 436.0, 433.0   // B-4
+      453.0, 450.0, 447.0, 445.0, 442.0, 439.0, 436.0, 433.0,  // B-4
+      428.0
   ]);
 
   this.pan_r=new Float32Array(32);
@@ -314,15 +315,20 @@ Fasttracker.prototype.parse = function(buffer)
         if (c&16) this.pattern[i][k+4]=buffer[offset+j++];
       } else {
         // first byte is note -> all columns present sequentially
-        this.pattern[i][k+0]=(c==97)?254:c;
+        this.pattern[i][k+0]=c;
         this.pattern[i][k+1]=buffer[offset+j++];
         this.pattern[i][k+2]=buffer[offset+j++];
         this.pattern[i][k+3]=buffer[offset+j++];
         this.pattern[i][k+4]=buffer[offset+j++];
       }
       // remap note to st3-style, 255=no note, 254=note off
-      this.pattern[i][k+0]=(this.pattern[i][k+0]==97)?254:this.pattern[i][k+0];
-      this.pattern[i][k+0]=(this.pattern[i][k+0]==0)?255:this.pattern[i][k+0];
+      if (this.pattern[i][k+0]==97) {
+        this.pattern[i][k+0]=254;
+      } else if (this.pattern[i][k+0]==0) {
+        this.pattern[i][k+0]=255;
+      } else {
+        this.pattern[i][k+0]--;
+      }
       // remap volume column setvol to 0x00..0x40, tone porta to 0x50..0x5f and 0xff for nop
       if (this.pattern[i][k+2]<0x10) this.pattern[i][k+2]=255;
       if (this.pattern[i][k+2]>=0x10 && this.pattern[i][k+2]<=0x50) this.pattern[i][k+2]-=0x10;
@@ -478,7 +484,7 @@ Fasttracker.prototype.parse = function(buffer)
   this.ready=true;
   this.loading=false;
 
-  this.mixval=this.channels;
+  this.mixval=this.channels*0.6; // todo:
 
   this.chvu=new Float32Array(this.channels);
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
@@ -491,13 +497,12 @@ Fasttracker.prototype.parse = function(buffer)
 // calculate period value for note
 Fasttracker.prototype.calcperiod=function(mod, note, finetune) {
   var pv;
-  note-=1;
   if (mod.amigaperiods) {
     // amiga periods
-    var ft=Math.floor(finetune/16.0);
-    var p1=mod.periodtable[ 8 + ((note%12)  )*8 + ft ]; //Math.floor(ft/16.0) ];
-    var p2=mod.periodtable[ 8 + ((note%12)+1)*8 + ft ]; //Math.floor(ft/16.0) ];
-    ft=(finetune/16.0) - ft; //Math.floor(ft/16.0);
+    var ft=Math.floor(finetune/16.0); // = -8 .. 7
+    var p1=mod.periodtable[ 8 + (note%12)*8 + ft ];
+    var p2=mod.periodtable[ 8 + (note%12)*8 + ft + 1];
+    ft=(finetune/16.0) - ft;
     pv=((1.0-ft)*p1 + ft*p2)*( 16.0/Math.pow(2, Math.floor(note/12)-1) ); // todo: why does octave need -1 to sound correct?
   } else {
     // linear
@@ -639,7 +644,7 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
 
   if (n && n<97) {
     // look up the sample
-    s=mod.instrument[i].samplemap[n-1];
+    s=mod.instrument[i].samplemap[n];
     mod.channel[ch].sampleindex=s;
 
     var rn=n + mod.instrument[i].sample[s].relativenote;
