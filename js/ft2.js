@@ -4,14 +4,12 @@
 
   todo:
   - this code is VERY incomplete, needs a lot of work
-  - fix mixing so that the output volume is at a sensible level
   - add interpolation and volume ramping (copy from S3M player)
   - enable pan envelopes
   - implement missing volume column effect commands
   - implement missing ft2 commands G-Z
   - implement instrument vibrato
   - fix vibrato to check linear/amiga periods
-  - weird channel volume bugs (f.ex. instrument "Calliope.pat" in funkystars.xm)
   - compatibility for versions older than 104h?
   - too many other bugs to list
 
@@ -50,7 +48,7 @@ function Fasttracker()
   this.samplerate=44100;
   this.ramplen=64.0;
 
-  this.mixval=20.0; // todo: change according to channel count
+  this.mixval=8.0;
 
   // amiga period value table
   this.periodtable=new Float32Array([
@@ -473,7 +471,7 @@ Fasttracker.prototype.parse = function(buffer)
             this.instrument[i].sample[j].data[k]=c/128.0;
           }          
         }
-        offset+=this.instrument[i].sample[j].length * this.instrument[i].sample[j].bps; //datalen;
+        offset+=this.instrument[i].sample[j].length * this.instrument[i].sample[j].bps;
       }
     } else {
       offset+=hdrlen;
@@ -484,7 +482,7 @@ Fasttracker.prototype.parse = function(buffer)
   this.ready=true;
   this.loading=false;
 
-  this.mixval=this.channels*0.6; // todo:
+  this.mixval=8.0 + this.channels*0.1; // todo: this is quite crude. ;)
 
   this.chvu=new Float32Array(this.channels);
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
@@ -498,14 +496,12 @@ Fasttracker.prototype.parse = function(buffer)
 Fasttracker.prototype.calcperiod=function(mod, note, finetune) {
   var pv;
   if (mod.amigaperiods) {
-    // amiga periods
     var ft=Math.floor(finetune/16.0); // = -8 .. 7
     var p1=mod.periodtable[ 8 + (note%12)*8 + ft ];
     var p2=mod.periodtable[ 8 + (note%12)*8 + ft + 1];
     ft=(finetune/16.0) - ft;
     pv=((1.0-ft)*p1 + ft*p2)*( 16.0/Math.pow(2, Math.floor(note/12)-1) ); // todo: why does octave need -1 to sound correct?
   } else {
-    // linear
     pv=10*12*16*4 - note*16*4 - finetune/2;
   }
   return pv;
@@ -642,7 +638,7 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
   }
   i=mod.channel[ch].instrument;
 
-  if (n && n<97) {
+  if (n<254) {
     // look up the sample
     s=mod.instrument[i].samplemap[n];
     mod.channel[ch].sampleindex=s;
@@ -652,21 +648,40 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
     // calc period for note
     pv=mod.calcperiod(mod, rn, mod.instrument[i].sample[s].finetune);
 
-    // noteon, except if command=0x03 (porta to note) or 0x05 (porta+volslide)
-    if ((mod.channel[ch].command != 0x03) && (mod.channel[ch].command != 0x05)) {
-      mod.channel[ch].note=n;
-      mod.channel[ch].period=pv;
-      mod.channel[ch].voiceperiod=mod.channel[ch].period;
+    if (mod.channel[ch].noteon) {
+      // retrig note, except if command=0x03 (porta to note) or 0x05 (porta+volslide)
+      if ((mod.channel[ch].command != 0x03) && (mod.channel[ch].command != 0x05)) {
+        mod.channel[ch].note=n;
+        mod.channel[ch].period=pv;
+        mod.channel[ch].voiceperiod=mod.channel[ch].period;
+        mod.channel[ch].flags|=3; // force sample speed recalc
+        
+        mod.channel[ch].samplepos=0;
+        mod.channel[ch].playdir=1;      
+        if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
+
+        mod.channel[ch].noteon=1;      
+
+        mod.channel[ch].fadeoutpos=65535;
+        mod.channel[ch].volenvpos=0;
+        mod.channel[ch].panenvpos=0;
+      }
+    } else {
+      // note is off, restart but don't set period if slide command
+      // retrig note, except if command=0x03 (porta to note) or 0x05 (porta+volslide)
       mod.channel[ch].samplepos=0;
       mod.channel[ch].playdir=1;      
       if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
-      
-      mod.channel[ch].flags|=3; // force sample speed recalc
       mod.channel[ch].noteon=1;      
-
       mod.channel[ch].fadeoutpos=65535;
       mod.channel[ch].volenvpos=0;
       mod.channel[ch].panenvpos=0;
+      if ((mod.channel[ch].command != 0x03) && (mod.channel[ch].command != 0x05)) {
+        mod.channel[ch].note=n;
+        mod.channel[ch].period=pv;
+        mod.channel[ch].voiceperiod=mod.channel[ch].period;
+        mod.channel[ch].flags|=3; // force sample speed recalc
+      }      
     }
     // in either case, set the slide to note target to note period
     mod.channel[ch].slideto=pv;
