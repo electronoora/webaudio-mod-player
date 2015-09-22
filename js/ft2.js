@@ -8,6 +8,7 @@
   - implement missing volume column effect commands
   - implement missing ft2 commands
   - implement instrument vibrato
+  - portamentos are now broken with linear periods?
   - fix vibrato to check linear/amiga periods
   - compatibility for versions older than 104h?
   - too many other bugs to list
@@ -1015,13 +1016,13 @@ Fasttracker.prototype.effect_t0_0=function(mod, ch) { // 0 arpeggio
   mod.channel[ch].arpeggio=mod.channel[ch].data;
 }
 Fasttracker.prototype.effect_t0_1=function(mod, ch) { // 1 slide up
-  if (mod.channel[ch].data) mod.channel[ch].slideupspeed=mod.channel[ch].data*16;
+  if (mod.channel[ch].data) mod.channel[ch].slideupspeed=mod.channel[ch].data*4; //*16;
 }
 Fasttracker.prototype.effect_t0_2=function(mod, ch) { // 2 slide down
-  if (mod.channel[ch].data) mod.channel[ch].slidedownspeed=mod.channel[ch].data*16;
+  if (mod.channel[ch].data) mod.channel[ch].slidedownspeed=mod.channel[ch].data*4; //*16;
 }
 Fasttracker.prototype.effect_t0_3=function(mod, ch) { // 3 slide to note
-  if (mod.channel[ch].data) mod.channel[ch].slidetospeed=mod.channel[ch].data*16;
+  if (mod.channel[ch].data) mod.channel[ch].slidetospeed=mod.channel[ch].data*4; //*16;
 }
 Fasttracker.prototype.effect_t0_4=function(mod, ch) { // 4 vibrato
   if (mod.channel[ch].data&0x0f && mod.channel[ch].data&0xf0) {
@@ -1037,7 +1038,7 @@ Fasttracker.prototype.effect_t0_6=function(mod, ch) { // 6
 Fasttracker.prototype.effect_t0_7=function(mod, ch) { // 7
 }
 Fasttracker.prototype.effect_t0_8=function(mod, ch) { // 8 set panning
-  mod.pan_r[ch]=(mod.channel[ch].data&0x0f)/15.0;
+  mod.pan_r[ch]=mod.channel[ch].data/255.0;
   mod.pan_l[ch]=1.0-mod.pan_r[ch];
 }
 Fasttracker.prototype.effect_t0_9=function(mod, ch) { // 9 set sample offset
@@ -1190,7 +1191,7 @@ Fasttracker.prototype.effect_t1_0=function(mod, ch) { // 0 arpeggio
 }
 Fasttracker.prototype.effect_t1_1=function(mod, ch) { // 1 slide up
   mod.channel[ch].voiceperiod-=mod.channel[ch].slideupspeed;
-  if (mod.channel[ch].voiceperiod<1) mod.channel[ch].voiceperiod=1;
+  if (mod.channel[ch].voiceperiod<1) mod.channel[ch].voiceperiod+=65535; // yeah, this is how it supposedly works in ft2...
   mod.channel[ch].flags|=3; // recalc speed
 }
 Fasttracker.prototype.effect_t1_2=function(mod, ch) { // 2 slide down

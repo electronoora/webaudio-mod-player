@@ -1,4 +1,4 @@
-<!-- MOD/S3M module player for Web Audio (c) 2012-2015 Firehawk/TDA (firehawk@haxor.fi) -->
+<!-- MOD/S3M/XM module player for Web Audio (c) 2012-2015 Firehawk/TDA (firehawk@haxor.fi) -->
 <?php
   ///////////////////
   // configuration
@@ -28,8 +28,8 @@
 ?>
 <html>
   <head>
-    <title>Protracker module player for Web Audio</title>
-    <meta name="description" content="A MOD/S3M module player in Javascript using the Web Audio API. Supports Chrome 14+ and Safari 6.">
+    <title>MOD/S3M/XM module player for Web Audio</title>
+    <meta name="description" content="A MOD/S3M/XM module player in Javascript using the Web Audio API.">
     <link rel="stylesheet" href="/style.css" type="text/css" media="screen" />
     <script src="http://code.jquery.com/jquery-2.1.1.js"></script>
 <?php
@@ -66,7 +66,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
   <body>
     <div id="outercontainer">
       <div id="headercontainer">
-        <div style="margin-left:8px;float:left">MOD/S3M module player for Web Audio</div>
+        <div style="margin-left:8px;float:left">MOD/S3M/XM module player for Web Audio</div>
         <div style="margin-right:8px;float:right">(c) 2012-2015 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
         <div style="clear:both;"></div>
       </div>
