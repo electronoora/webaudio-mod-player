@@ -3,11 +3,10 @@
   (c) 2015 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
-  - this code is VERY incomplete, needs a lot of work
-  - add interpolation and volume ramping (copy from S3M player)
-  - enable pan envelopes
+  - fix clicks - ramping isn's always working as intended
+  - enable pan envelopes, sample panning
   - implement missing volume column effect commands
-  - implement missing ft2 commands G-Z
+  - implement missing ft2 commands
   - implement instrument vibrato
   - fix vibrato to check linear/amiga periods
   - compatibility for versions older than 104h?
@@ -236,6 +235,15 @@ Fasttracker.prototype.initialize = function()
     this.channel[i].fadeoutpos=0;
     
     this.channel[i].playdir=1;
+    
+    // interpolation/ramps
+    this.channel[i].volramp=0;
+    this.channel[i].volrampfrom=0;
+    this.channel[i].trigramp=0;
+    this.channel[i].trigrampfrom=0.0;
+    this.channel[i].currentsample=0.0;
+    this.channel[i].lastsample=0.0;    
+    this.channel[i].oldvoicevolume=0.0;
   }
 }
 
@@ -357,6 +365,18 @@ Fasttracker.prototype.parse = function(buffer)
     // initialize to defaults
     this.instrument[i].samplemap=new Uint8Array(96);
     for(j=0;j<96;j++) this.instrument[i].samplemap[j]=0;
+    this.instrument[i].volenv=new Float32Array(325);
+    this.instrument[i].panenv=new Float32Array(325);
+    this.instrument[i].voltype=0;
+    this.instrument[i].pantype=0;
+    for(j=0;j<=this.instrument[i].samples;j++) {
+      this.instrument[i].sample[j]={
+        bits:8, stereo:0, bps:1,
+        length:0, loopstart:0, looplength:0, loopend:0, looptype:0,
+        volume:64, finetune:0, relativenote:0, panning:128, name:"",
+        data:new Float32Array(0)
+      };
+    }
     
     if (this.instrument[i].samples) {
       var smphdrlen=le_dword(buffer, offset+29);
@@ -382,7 +402,6 @@ Fasttracker.prototype.parse = function(buffer)
       // are stepped through at a rate of one per tick. max tick count is 0x0144.
 
       // volume envelope      
-      this.instrument[i].volenv=new Float32Array(325);
       if (this.instrument[i].voltype&1) {
         for(j=0;j<325;j++) {
           var p, delta;
@@ -398,7 +417,6 @@ Fasttracker.prototype.parse = function(buffer)
       }
 
       // pan envelope      
-      this.instrument[i].panenv=new Float32Array(325);
       if (this.instrument[i].pantype&1) {
         for(j=0;j<325;j++) {
           var p, delta;
@@ -637,13 +655,14 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
     mod.channel[ch].instrument=i-1;
     
     if (mod.instrument[i-1].samples) {
-      s=mod.instrument[i-1].samplemap[mod.channel[ch].note-1];
+      s=mod.instrument[i-1].samplemap[mod.channel[ch].note]; //-1];
       mod.channel[ch].sampleindex=s;
       mod.channel[ch].volume=mod.instrument[i-1].sample[s].volume;
-    } else {
-      mod.channel[ch].sampleindex=0;
-      mod.channel[ch].volume=64;
-    } 
+    }
+//     else {
+//      mod.channel[ch].sampleindex=0;
+//      mod.channel[ch].volume=64;
+//    } 
     mod.channel[ch].voicevolume=mod.channel[ch].volume;
   }
   i=mod.channel[ch].instrument;
@@ -666,6 +685,9 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
         mod.channel[ch].voiceperiod=mod.channel[ch].period;
         mod.channel[ch].flags|=3; // force sample speed recalc
         
+        mod.channel[ch].trigramp=0.0;
+        mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
+
         mod.channel[ch].samplepos=0;
         mod.channel[ch].playdir=1;      
         if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
@@ -692,11 +714,14 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
         mod.channel[ch].voiceperiod=mod.channel[ch].period;
         mod.channel[ch].flags|=3; // force sample speed recalc
       }      
+      mod.channel[ch].trigramp=0.0;
+      mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
     }
     // in either case, set the slide to note target to note period
     mod.channel[ch].slideto=pv;
   } else if (n==254) {
     mod.channel[ch].noteon=0; // note off
+    if (!(mod.instrument[i].voltype&1)) mod.channel[ch].voicevolume=0;
   }
   
   if (mod.pattern[p][pp+2]!=255) {
@@ -735,6 +760,8 @@ Fasttracker.prototype.mix = function(ape, mod) {
         p=mod.patterntable[mod.position];
         pp=mod.row*5*mod.channels + ch*5;
 
+        if (mod.flags&3) mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
+
         if (mod.flags&2) { // new row
           mod.channel[ch].command=mod.pattern[p][pp+3];
           mod.channel[ch].data=mod.pattern[p][pp+4];
@@ -767,10 +794,17 @@ Fasttracker.prototype.mix = function(ape, mod) {
           }
         }
 
+        // setup volramp if voice volume changed
+        if (mod.flags&3) {
+          if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
+            mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
+            mod.channel[ch].volramp=0.0;
+          }
+        }
+
         // recalc sample speed if voiceperiod has changed
         if ((mod.channel[ch].flags&1 || mod.flags&2) && mod.channel[ch].voiceperiod)
         {
-          var f;
           if (mod.amigaperiods) {
             f=8363.0 * 1712.0/mod.channel[ch].voiceperiod;
           } else {
@@ -786,54 +820,90 @@ Fasttracker.prototype.mix = function(ape, mod) {
         }
 
         // add channel output to left/right master outputs
-        fl=0.0; fr=0.0;
+        fl=0.0; fr=0.0; fs=0.0;
         if (mod.channel[ch].noteon || 
-            ((mod.instrument[i].voltype&1) && !mod.channel[ch].noteon && mod.channel[ch].fadeoutpos)
+            ((mod.instrument[i].voltype&1) && !mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) ||
+            (!mod.channel[ch].noteon && mod.channel[ch].volramp<1.0)
            ) {
           if (mod.instrument[i].sample[si].length > mod.channel[ch].samplepos) {
+            fl=mod.channel[ch].lastsample;
+
+            // interpolate towards current sample
+            f=mod.channel[ch].samplepos-Math.floor(mod.channel[ch].samplepos);
+            if (mod.channel[ch].playdir==-1) f=1.0-f;
             fs=mod.instrument[i].sample[si].data[Math.floor(mod.channel[ch].samplepos)];
+	    fl=f*fs + (1.0-f)*fl;
+	    
+            // smooth out discontinuities from retrig and sample offset
+            if (mod.channel[ch].trigramp<1.0) {
+              fl=mod.channel[ch].trigramp*fl + (1.0-mod.channel[ch].trigramp)*mod.channel[ch].trigrampfrom;
+              mod.channel[ch].trigramp+=1.0/128.0;
+            }
+	    mod.channel[ch].currentsample=fl;
 
             pv=mod.channel[ch].voicevolume/64.0;
             if (mod.instrument[i].voltype&1) {
               pv*=mod.instrument[i].volenv[mod.channel[ch].volenvpos];
               if (!mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) pv*=mod.channel[ch].fadeoutpos/65536.0;
             }
-            fs*=pv;
+            fr=fl*pv;
 
-            // todo: interpolation and volume ramps
+            // volume ramps
+            if (mod.channel[ch].volramp<1.0) {
+              fl=mod.channel[ch].volramp*fr + (1.0-mod.channel[ch].volramp)*(fl*(mod.channel[ch].volrampfrom/64.0));
+              mod.channel[ch].volramp+=(1.0/64.0);
+            } else {
+              fl=fr;
+            }
 
             // pan samples (todo: pan envelope)
-            fr=fs*mod.pan_r[ch];
-            fl=fs*mod.pan_l[ch];
+            fr=fl*mod.pan_r[ch];
+            fl*=mod.pan_l[ch];
           }
           outp[0]+=fl;
           outp[1]+=fr;
 
           // advance sample position and check for loop or end
+          var oldpos=mod.channel[ch].samplepos;
           mod.channel[ch].samplepos+=mod.channel[ch].playdir*mod.channel[ch].samplespeed;
+          if (mod.channel[ch].playdir==1) {
+            if (Math.floor(mod.channel[ch].samplepos) > Math.floor(oldpos)) mod.channel[ch].lastsample=fs;
+          } else {
+            if (Math.floor(mod.channel[ch].samplepos) < Math.floor(oldpos)) mod.channel[ch].lastsample=fs;
+          }
+
           if (mod.instrument[i].sample[si].looptype) {
             if (mod.instrument[i].sample[si].looptype==2) {
               // pingpong loop
               if (mod.channel[ch].playdir==-1) {
                 // bounce off from start?
                 if (mod.channel[ch].samplepos <= mod.instrument[i].sample[si].loopstart) {
-                  mod.channel[ch].samplepos=mod.instrument[i].sample[si].loopstart; //-mod.channel[ch].samplepos;
+                  mod.channel[ch].samplepos+=(mod.instrument[i].sample[si].loopstart-mod.channel[ch].samplepos);
                   mod.channel[ch].playdir=1;
+                  mod.channel[ch].lastsample=mod.channel[ch].currentsample;
                 }
               } else {
                 // bounce off from end?
                 if (mod.channel[ch].samplepos >= mod.instrument[i].sample[si].loopend) {
-                  mod.channel[ch].samplepos=mod.instrument[i].sample[si].loopend;
+                  mod.channel[ch].samplepos-=(mod.channel[ch].samplepos-mod.instrument[i].sample[si].loopend);
                   mod.channel[ch].playdir=-1;
+                  mod.channel[ch].lastsample=mod.channel[ch].currentsample;
                 }
               }
             } else {
               // normal loop
-              if (mod.channel[ch].samplepos >= mod.instrument[i].sample[si].loopend) mod.channel[ch].samplepos-=mod.instrument[i].sample[si].looplength;
+              if (mod.channel[ch].samplepos >= mod.instrument[i].sample[si].loopend) {
+                mod.channel[ch].samplepos-=mod.instrument[i].sample[si].looplength;
+                mod.channel[ch].lastsample=mod.channel[ch].currentsample;
+              }
             }
           } else {
-            if (mod.channel[ch].samplepos >= mod.instrument[i].sample[si].length) mod.channel[ch].noteon=0;
+            if (mod.channel[ch].samplepos >= mod.instrument[i].sample[si].length) {
+              mod.channel[ch].noteon=0;
+            }
           }          
+        } else {
+          mod.channel[ch].currentsample=0.0;
         }
         mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(fl+fr));
 
@@ -896,6 +966,8 @@ Fasttracker.prototype.effect_vol_t0_b0=function(mod, ch, data) { // b0-bf vibrat
   mod.effect_t1_4(mod, ch);
 }
 Fasttracker.prototype.effect_vol_t0_c0=function(mod, ch, data) { // c0-cf set panning
+  mod.pan_r[ch]=(data&0x0f)/15.0;
+  mod.pan_l[ch]=1.0-mod.pan_r[ch];
 }
 Fasttracker.prototype.effect_vol_t0_d0=function(mod, ch, data) { // d0-df panning slide left
 }
@@ -925,6 +997,7 @@ Fasttracker.prototype.effect_vol_t1_b0=function(mod, ch, data) { // b0-bf vibrat
   mod.effect_t1_4(mod, ch); // same as effect column vibrato on ticks 1+
 }
 Fasttracker.prototype.effect_vol_t1_c0=function(mod, ch, data) { // c0-cf set panning
+  // -
 }
 Fasttracker.prototype.effect_vol_t1_d0=function(mod, ch, data) { // d0-df panning slide left
 }
@@ -964,10 +1037,15 @@ Fasttracker.prototype.effect_t0_6=function(mod, ch) { // 6
 Fasttracker.prototype.effect_t0_7=function(mod, ch) { // 7
 }
 Fasttracker.prototype.effect_t0_8=function(mod, ch) { // 8 set panning
+  mod.pan_r[ch]=(mod.channel[ch].data&0x0f)/15.0;
+  mod.pan_l[ch]=1.0-mod.pan_r[ch];
 }
 Fasttracker.prototype.effect_t0_9=function(mod, ch) { // 9 set sample offset
   mod.channel[ch].samplepos=mod.channel[ch].data*256;
   mod.channel[ch].playdir=1;      
+
+  mod.channel[ch].trigramp=0.0;
+  mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
 }
 Fasttracker.prototype.effect_t0_a=function(mod, ch) { // a volume slide
   // this behavior differs from protracker!! A00 will slide using previous non-zero parameter.
@@ -980,6 +1058,8 @@ Fasttracker.prototype.effect_t0_b=function(mod, ch) { // b pattern jump
 }
 Fasttracker.prototype.effect_t0_c=function(mod, ch) { // c set volume
   mod.channel[ch].voicevolume=mod.channel[ch].data;
+  if (mod.channel[ch].voicevolume<0) mod.channel[ch].voicevolume=0;
+  if (mod.channel[ch].voicevolume>64) mod.channel[ch].voicevolume=64;
 }
 Fasttracker.prototype.effect_t0_d=function(mod, ch) { // d pattern break
   mod.breakrow=((mod.channel[ch].data&0xf0)>>4)*10 + (mod.channel[ch].data&0x0f);
@@ -1007,6 +1087,7 @@ Fasttracker.prototype.effect_t0_i=function(mod, ch) {} // i
 Fasttracker.prototype.effect_t0_j=function(mod, ch) {} // j
 Fasttracker.prototype.effect_t0_k=function(mod, ch) {  // k key off
   mod.channel[ch].noteon=0;
+  if (!(mod.instrument[mod.channel[ch].instrument].voltype&1)) mod.channel[ch].voicevolume=0;
 }
 Fasttracker.prototype.effect_t0_l=function(mod, ch) {  // l set envelope position
   mod.channel[ch].volenvpos=mod.channel[ch].data;
@@ -1236,6 +1317,9 @@ Fasttracker.prototype.effect_t1_e9=function(mod, ch) { // e9 retrig sample
   if (mod.tick%(mod.channel[ch].data&0x0f)==0) {
     mod.channel[ch].samplepos=0;
     mod.channel[ch].playdir=1;    
+
+    mod.channel[ch].trigramp=0.0;
+    mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
     
     mod.channel[ch].fadeoutpos=65535;
     mod.channel[ch].volenvpos=0;
