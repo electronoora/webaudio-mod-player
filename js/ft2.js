@@ -1,6 +1,6 @@
 /*
   fast tracker 2 module player for web audio api      
-  (c) 2012-2015 firehawk/tda  (firehawk@haxor.fi)
+  (c) 2015 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
   - this code is VERY incomplete, needs a lot of work
@@ -192,6 +192,8 @@ Fasttracker.prototype.initialize = function()
   this.loopstart=0;
   this.loopcount=0;
   
+  this.globalvolslide=0;
+  
   this.channel=new Array();
   for(i=0;i<this.channels;i++) {
     this.channel[i]=new Object();
@@ -207,6 +209,7 @@ Fasttracker.prototype.initialize = function()
     this.channel[i].flags=0;
     this.channel[i].noteon=0;
 
+    this.channel[i].volslide=0;
     this.channel[i].slidespeed=0;
     this.channel[i].slideto=0;
     this.channel[i].slidetospeed=0;
@@ -360,7 +363,7 @@ Fasttracker.prototype.parse = function(buffer)
 
       for(j=0;j<96;j++) this.instrument[i].samplemap[j]=buffer[offset+33+j];
 
-      // envelopes. the xm specs say 48 bytes per envelope, but while that may
+      // envelope points. the xm specs say 48 bytes per envelope, but while that may
       // technically be correct, what they don't say is that it means 12 pairs of
       // little endian words. first word is the x coordinate, second is y. point
       // 0 always has x=0.
@@ -370,38 +373,45 @@ Fasttracker.prototype.parse = function(buffer)
         tmp_volenv[j]=new Uint16Array([le_word(buffer, offset+129+j*4), le_word(buffer, offset+129+j*4+2)]);
         tmp_panenv[j]=new Uint16Array([le_word(buffer, offset+177+j*4), le_word(buffer, offset+177+j*4+2)]);
       }
+
+      // are envelopes enabled?
+      this.instrument[i].voltype=buffer[offset+233]; // 1=enabled, 2=sustain, 4=loop
+      this.instrument[i].pantype=buffer[offset+234];
       
       // pre-interpolate the envelopes to arrays of [0..1] float32 values which
       // are stepped through at a rate of one per tick. max tick count is 0x0144.
+
+      // volume envelope      
       this.instrument[i].volenv=new Float32Array(325);
-      this.instrument[i].panenv=new Float32Array(325);
-      for(j=0;j<325;j++) {
-        var p, delta;
-        
-        p=0;
-        while(tmp_volenv[p][0]<=j && p<11) p++;
-        delta=(tmp_volenv[p][1]-tmp_volenv[p-1][1]) / (tmp_volenv[p][0]-tmp_volenv[p-1][0]);
-        this.instrument[i].volenv[j]=(tmp_volenv[p-1][1] + delta*(j-tmp_volenv[p-1][0]))/64.0;
-
-        p=0;
-        while(tmp_panenv[p][0]<=j && p<11) p++;
-        delta=(tmp_panenv[p][1]-tmp_panenv[p-1][1]) / (tmp_panenv[p][0]-tmp_panenv[p-1][0]);
-        this.instrument[i].panenv[j]=(tmp_panenv[p-1][1] + delta*(j-tmp_panenv[p-1][0]))/64.0;
+      if (this.instrument[i].voltype&1) {
+        for(j=0;j<325;j++) {
+          var p, delta;
+          p=0;
+          while(tmp_volenv[p][0]<=j && p<11) p++;
+          delta=(tmp_volenv[p][1]-tmp_volenv[p-1][1]) / (tmp_volenv[p][0]-tmp_volenv[p-1][0]);
+          this.instrument[i].volenv[j]=(tmp_volenv[p-1][1] + delta*(j-tmp_volenv[p-1][0]))/64.0;
+        }
+        this.instrument[i].volenvlen=tmp_volenv[Math.max(0, buffer[offset+225]-1)][0];
+        this.instrument[i].volsustain=tmp_volenv[buffer[offset+227]][0];
+        this.instrument[i].volloopstart=tmp_volenv[buffer[offset+228]][0];
+        this.instrument[i].volloopend=tmp_volenv[buffer[offset+229]][0];
       }
-      
-      // volume envelope parameters
-      this.instrument[i].volenvlen=tmp_volenv[Math.max(0, buffer[offset+225]-1)][0];
-      this.instrument[i].volsustain=tmp_volenv[buffer[offset+227]][0];
-      this.instrument[i].volloopstart=tmp_volenv[buffer[offset+228]][0];
-      this.instrument[i].volloopend=tmp_volenv[buffer[offset+229]][0];
-      this.instrument[i].voltype=buffer[offset+233]; // 1=enabled, 2=sustain, 4=loop
 
-      // pan envelope parameters
-      this.instrument[i].panenvlen=tmp_panenv[Math.max(0, buffer[offset+226]-1)][0];
-      this.instrument[i].pansustain=tmp_panenv[buffer[offset+230]][0];
-      this.instrument[i].panloopstart=tmp_panenv[buffer[offset+231]][0];
-      this.instrument[i].panloopend=tmp_panenv[buffer[offset+232]][0];
-      this.instrument[i].pantype=buffer[offset+234];
+      // pan envelope      
+      this.instrument[i].panenv=new Float32Array(325);
+      if (this.instrument[i].pantype&1) {
+        for(j=0;j<325;j++) {
+          var p, delta;
+          p=0;
+          while(tmp_panenv[p][0]<=j && p<11) p++;
+          delta=(tmp_panenv[p][1]-tmp_panenv[p-1][1]) / (tmp_panenv[p][0]-tmp_panenv[p-1][0]);
+          this.instrument[i].panenv[j]=(tmp_panenv[p-1][1] + delta*(j-tmp_panenv[p-1][0]))/64.0;
+        }
+        this.instrument[i].panenvlen=tmp_panenv[Math.max(0, buffer[offset+226]-1)][0];
+        this.instrument[i].pansustain=tmp_panenv[buffer[offset+230]][0];
+        this.instrument[i].panloopstart=tmp_panenv[buffer[offset+231]][0];
+        this.instrument[i].panloopend=tmp_panenv[buffer[offset+232]][0];
+      }
       
       // vibrato
       this.instrument[i].vibratotype=buffer[offset+235];
@@ -959,7 +969,9 @@ Fasttracker.prototype.effect_t0_9=function(mod, ch) { // 9 set sample offset
   mod.channel[ch].samplepos=mod.channel[ch].data*256;
   mod.channel[ch].playdir=1;      
 }
-Fasttracker.prototype.effect_t0_a=function(mod, ch) { // a
+Fasttracker.prototype.effect_t0_a=function(mod, ch) { // a volume slide
+  // this behavior differs from protracker!! A00 will slide using previous non-zero parameter.
+  if (mod.channel[ch].data) mod.channel[ch].volslide=mod.channel[ch].data;
 }
 Fasttracker.prototype.effect_t0_b=function(mod, ch) { // b pattern jump
   mod.breakrow=0;
@@ -986,9 +998,11 @@ Fasttracker.prototype.effect_t0_f=function(mod, ch) { // f set speed
   }
 }
 Fasttracker.prototype.effect_t0_g=function(mod, ch) { // g set global volume
-//  if (mod.channel[ch].data<=0x40) mod.volume=mod.channel[ch].data;
+  if (mod.channel[ch].data<=0x40) mod.volume=mod.channel[ch].data;
 }
-Fasttracker.prototype.effect_t0_h=function(mod, ch) {} // h global volume slide
+Fasttracker.prototype.effect_t0_h=function(mod, ch) { // h global volume slide
+  if (mod.channel[ch].data) mod.globalvolslide=mod.channel[ch].data;  
+}
 Fasttracker.prototype.effect_t0_i=function(mod, ch) {} // i
 Fasttracker.prototype.effect_t0_j=function(mod, ch) {} // j
 Fasttracker.prototype.effect_t0_k=function(mod, ch) {  // k key off
@@ -1138,14 +1152,14 @@ Fasttracker.prototype.effect_t1_8=function(mod, ch) { // 8 unused
 Fasttracker.prototype.effect_t1_9=function(mod, ch) { // 9 set sample offset
 }
 Fasttracker.prototype.effect_t1_a=function(mod, ch) { // a volume slide
-  if (!(mod.channel[ch].data&0x0f)) {
+  if (!(mod.channel[ch].volslide&0x0f)) {
     // y is zero, slide up
-    mod.channel[ch].voicevolume+=(mod.channel[ch].data>>4);
+    mod.channel[ch].voicevolume+=(mod.channel[ch].volslide>>4);
     if (mod.channel[ch].voicevolume>64) mod.channel[ch].voicevolume=64;
   }
-  if (!(mod.channel[ch].data&0xf0)) {
+  if (!(mod.channel[ch].volslide&0xf0)) {
     // x is zero, slide down
-    mod.channel[ch].voicevolume-=(mod.channel[ch].data&0x0f);
+    mod.channel[ch].voicevolume-=(mod.channel[ch].volslide&0x0f);
     if (mod.channel[ch].voicevolume<0) mod.channel[ch].voicevolume=0;                  
   }
 }
@@ -1162,7 +1176,20 @@ Fasttracker.prototype.effect_t1_e=function(mod, ch) { // e
 Fasttracker.prototype.effect_t1_f=function(mod, ch) { // f
 }
 Fasttracker.prototype.effect_t1_g=function(mod, ch) {} // g set global volume
-Fasttracker.prototype.effect_t1_h=function(mod, ch) {} // h
+
+Fasttracker.prototype.effect_t1_h=function(mod, ch) { // h global volume slude
+  if (!(mod.globalvolslide&0x0f)) {
+    // y is zero, slide up
+    mod.volume+=(mod.globalvolslide>>4);
+    if (mod.volume>64) mod.volume=64;
+  }
+  if (!(mod.globalvolslide&0xf0)) {
+    // x is zero, slide down
+    mod.volume-=(mod.globalvolslide&0x0f);
+    if (mod.volume<0) mod.volume=0;                  
+  }
+}
+
 Fasttracker.prototype.effect_t1_i=function(mod, ch) {} // i
 Fasttracker.prototype.effect_t1_j=function(mod, ch) {} // j
 Fasttracker.prototype.effect_t1_k=function(mod, ch) {} // k key off
