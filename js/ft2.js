@@ -23,12 +23,6 @@
 
 */
 
-// helper functions for picking up signed, unsigned, little endian, etc from an unsigned 8-bit buffer
-function le_word(buffer, offset) { return buffer[offset]|(buffer[offset+1]<<8); }
-function le_dword(buffer, offset) { return buffer[offset]|(buffer[offset+1]<<8)|(buffer[offset+2]<<16)|(buffer[offset+3]<<24); }
-function s_byte(buffer, offset) { return (buffer[offset]<128)?buffer[offset]:(buffer[offset]-256); }
-function s_le_word(buffer, offset) { return (le_word(buffer,offset)<32768)?le_word(buffer,offset):(le_word(buffer,offset)-65536); }
-
 function Fasttracker()
 {
   var i, t;
@@ -267,7 +261,7 @@ Fasttracker.prototype.parse = function(buffer)
 
   // song title
   i=0;
-  while(buffer[i] && i<20) this.title+=String.fromCharCode(buffer[17+i++]);
+  while(buffer[i] && i<20) this.title+=dos2utf(buffer[17+i++]);
 
   offset=60;
   hdrlen=le_dword(buffer, offset);
@@ -300,7 +294,7 @@ Fasttracker.prototype.parse = function(buffer)
       this.pattern[i][row*this.channels*5 + ch*5 + 0]=255; // note (255=no note)
       this.pattern[i][row*this.channels*5 + ch*5 + 1]=0; // instrument
       this.pattern[i][row*this.channels*5 + ch*5 + 2]=255 // volume
-      this.pattern[i][row*this.channels*5 + ch*5 + 3]=0; // command
+      this.pattern[i][row*this.channels*5 + ch*5 + 3]=255; // command
       this.pattern[i][row*this.channels*5 + ch*5 + 4]=0; // parameter
     }
   }
@@ -339,6 +333,10 @@ Fasttracker.prototype.parse = function(buffer)
       } else {
         this.pattern[i][k+0]--;
       }
+      
+      // command 255=no command
+      if (this.pattern[i][k+3]==0 && this.pattern[i][k+4]==0) this.pattern[i][k+3]=255;
+      
       // remap volume column setvol to 0x00..0x40, tone porta to 0x50..0x5f and 0xff for nop
       if (this.pattern[i][k+2]<0x10) this.pattern[i][k+2]=255;
       if (this.pattern[i][k+2]>=0x10 && this.pattern[i][k+2]<=0x50) this.pattern[i][k+2]-=0x10;
@@ -360,7 +358,7 @@ Fasttracker.prototype.parse = function(buffer)
     this.instrument[i].name="";
     j=0;
     while(buffer[offset+4+j] && j<22)
-      this.instrument[i].name+=String.fromCharCode(buffer[offset+4+j++]);
+      this.instrument[i].name+=dos2utf(buffer[offset+4+j++]);
     this.instrument[i].samples=le_word(buffer, offset+27);
 
     // initialize to defaults
@@ -476,7 +474,7 @@ Fasttracker.prototype.parse = function(buffer)
         this.instrument[i].sample[j].panning=buffer[offset+15];
 
         k=0; this.instrument[i].sample[j].name="";
-        while(buffer[offset+18+k] && k<22) this.instrument[i].sample[j].name+=String.fromCharCode(buffer[offset+18+k++]);
+        while(buffer[offset+18+k] && k<22) this.instrument[i].sample[j].name+=dos2utf(buffer[offset+18+k++]);
         
         offset+=smphdrlen;
       }
@@ -701,7 +699,6 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
       }
     } else {
       // note is off, restart but don't set period if slide command
-      // retrig note, except if command=0x03 (porta to note) or 0x05 (porta+volslide)
       mod.channel[ch].samplepos=0;
       mod.channel[ch].playdir=1;      
       if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
@@ -746,6 +743,7 @@ Fasttracker.prototype.mix = function(ape, mod) {
 
   var bufs=new Array(ape.outputBuffer.getChannelData(0), ape.outputBuffer.getChannelData(1));
   var buflen=ape.outputBuffer.length;
+
   for(var s=0;s<buflen;s++)
   {
     outp[0]=0.0;
@@ -1032,8 +1030,10 @@ Fasttracker.prototype.effect_t0_4=function(mod, ch) { // 4 vibrato
   mod.effect_t1_4(mod, ch);
 }
 Fasttracker.prototype.effect_t0_5=function(mod, ch) { // 5
+  mod.effect_t0_a(mod, ch);
 }
 Fasttracker.prototype.effect_t0_6=function(mod, ch) { // 6
+  mod.effect_t0_a(mod, ch);
 }
 Fasttracker.prototype.effect_t0_7=function(mod, ch) { // 7
 }

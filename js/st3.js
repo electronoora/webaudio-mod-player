@@ -1,6 +1,6 @@
 /*
   scream tracker 3 module player for web audio api      
-  (c) 2012-2015 firehawk/tda  (firehawk@haxor.fi)
+  (c) 2015 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
   - fix crash at pos 54 (0x36) in dune's control-e
@@ -253,7 +253,7 @@ Screamtracker.prototype.parse = function(buffer)
   
   i=0;
   while(buffer[i] && i<0x1c)
-    this.title+=String.fromCharCode(buffer[i++]);
+    this.title+=dos2utf(buffer[i++]); //String.fromCharCode(buffer[i++]);
 
   this.ordNum=buffer[0x0020]|(buffer[0x0021]<<8);
   this.insNum=buffer[0x0022]|(buffer[0x0023]<<8);
@@ -305,7 +305,7 @@ Screamtracker.prototype.parse = function(buffer)
     j=0;
     this.sample[i].name="";
     while(buffer[offset+0x0030+j] && j<28) { 
-      this.sample[i].name+=String.fromCharCode(buffer[offset+0x0030+j]);
+      this.sample[i].name+=dos2utf(buffer[offset+0x0030+j]); //String.fromCharCode(buffer[offset+0x0030+j]);
       j++;
     }
     this.sample[i].length=buffer[offset+0x10]|buffer[offset+0x11]<<8;

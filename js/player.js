@@ -297,7 +297,7 @@ Modplayer.prototype.currentpattern = function()
 // note: 254=noteoff, 255=no note
 // sample: 0=no instrument, 1..255=sample number
 // volume: 255=no volume set, 0..64=set volume, 65..239=ft2 volume commands
-// command: 0x2e=no command, 0..36=effect command
+// command: 0x2e=no command, 0..0x24=effect command
 // data: 0..255
 Modplayer.prototype.patterndata = function(pn)
 {
@@ -324,9 +324,8 @@ Modplayer.prototype.patterndata = function(pn)
       if (patt[i*5*this.channels+c*5+0]<97)
         patt[i*5*this.channels+c*5+0]=(patt[i*5*this.channels+c*5+0]%12)|(Math.floor(patt[i*5*this.channels+c*5+0]/12)<<4);
       if (patt[i*5*this.channels+c*5+2]>=0x50 && patt[i*5*this.channels+c*5+2]<=0x5e) patt[i*5*this.channels+c*5+2]+=0xa0;
-      if (patt[i*5*this.channels+c*5+3]==0 && patt[i*5*this.channels+c*5+4]==0) {
-        patt[i*5*this.channels+c*5+3]=0x2e;
-      } else {
+      if (patt[i*5*this.channels+c*5+3]==255) patt[i*5*this.channels+c*5+3]=0x2e;
+      else {
         if (patt[i*5*this.channels+c*5+3]<0x0a) {
           patt[i*5*this.channels+c*5+3]+=0x30;
         } else {
@@ -434,8 +433,6 @@ Modplayer.prototype.mix = function(ape) {
 
     if (mod.delayfirst>0) mod.delayfirst--;
     mod.delayload=0;
-  } else {
-    // fill buffer with silence?
   }
   
   // update this.chvu from player channel vu

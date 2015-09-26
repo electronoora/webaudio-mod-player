@@ -41,6 +41,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
   echo "    <script type=\"text/javascript\">var mobileSafari=false;</script>";
 }
 ?>    
+    <script type="text/javascript" src="/js/utils.js"></script>
     <script type="text/javascript" src="/js/player.js"></script>
     <script type="text/javascript" src="/js/pt.js"></script>
     <script type="text/javascript" src="/js/st3.js"></script>

@@ -12,19 +12,22 @@ function notef(n,s,v,c,d,cc)
   if (cc<=8) return ((n<255) ? (prn(n)+" ") : ("... "))+
     (s ? ("<span class=\"sample\">"+hb(s)+"</span> ") : (".. "))+
     ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span> "):(".. "))+
-    "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+    ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") : "...")+
+    "|";
       
   // 11 chars (max 110)
   if (cc<=10) return ((n<255) ? prn(n) : ("..."))+
     (s ? ("<span class=\"sample\">"+hb(s)+"</span>") : (".."))+
     ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):(".."))+
-    "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+    ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") : "...")+
+    "|";
       
   // 9 chars (max 108)
   if (cc<=12) return ((n<255) ? prn(n) : ("..."))+
     (s ? ("<span class=\"sample\">"+hb(s)+"</span>") :
     ((v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):("..")))+
-    "<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>|";
+    ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") : "...")+
+    "|";
       
   // 7 chars (max 112)
   if (cc<=16) return ((n<255) ? prn(n) : ("..."))+
@@ -46,6 +49,15 @@ function hb(n)
   if (s.length==1) s='0'+s;
   return s.toUpperCase();
 }
+function hw(n)
+{
+  if (typeof n == "undefined") return "0000";
+  var s=n.toString(16);
+  if (s.length==3) s='0'+s;
+  else if (s.length==2) s='00'+s;
+  else if (s.length==1) s='000'+s;
+  return s.toUpperCase();
+}
 
 function pad(s,l)
 {
@@ -53,6 +65,18 @@ function pad(s,l)
   if (ps.length > l) ps=ps.substring(0,l-1);
   while (ps.length < l) ps+=" ";
   return ps;
+}
+
+function rpe(s)
+{
+  var rs="";
+  for(var i=0;i<s.length;i++) {
+    if (s[i]=='>') rs+="&gt;"
+    else if (s[i]=='<') rs+='&lt';
+    else if (s[i]=='&') rs+='&amp;';
+    else rs+=s[i];
+  }
+  return rs;
 }
 
 function vu(l)
@@ -262,10 +286,10 @@ $(document).ready(function() {
   }
 
   module.onReady=function() {  
-    $("#modtitle").html(pad(this.title, 28));
+    $("#modtitle").html(rpe(pad(this.title, 28)));
     $("#modsamples").html("");
     for(i=0;i<31;i++)
-      $("#modsamples").append("<span class=\"samplelist\" id=\"sample"+hb(i+1)+"\">"+hb(i+1)+" "+pad(this.samplenames[i], 28)+"</span>\n");
+      $("#modsamples").append("<span class=\"samplelist\" id=\"sample"+hb(i+1)+"\">"+hb(i+1)+" "+rpe(pad(this.samplenames[i], 28))+"</span>\n");
     $("#modinfo").html("");
     $("#modinfo").append("('"+this.signature+"')");
     var s=window.currentModule.split("/");
@@ -318,15 +342,20 @@ $(document).ready(function() {
         var txt, txt0="<br/>", txt1="<br/>";
         for(ch=0;ch<mod.channels;ch++) {
           txt='<span class="channelnr">'+hb(ch)+'</span> ['+vu(mod.chvu[ch])+'] '+
-              '<span class="hl">'+hb(mod.currentsample(ch))+'</span>:<span class="channelsample">'+pad(mod.samplenames[mod.currentsample(ch)], 28)+"</span><br/>";
+              '<span class="hl">'+hb(mod.currentsample(ch))+'</span>:<span class="channelsample">'+rpe(pad(mod.samplenames[mod.currentsample(ch)], 28))+"</span><br/>";
           if (ch&1) txt0+=txt; else txt1+=txt;
         }
         $("#even-channels").html(txt0);
         $("#odd-channels").html(txt1);
       }
-      if (oldpos != mod.position && window.moduleVis==1) {
-        if (oldpos>=0) $(".currentpattern").removeClass("currentpattern");
-        $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
+      if (window.moduleVis==1) {
+        if (oldpos>=0 && oldrow>=0) $(".currentrow").removeClass("currentrow");
+        $("#pattern"+hb(mod.currentpattern())+"_row"+hb(mod.row)).addClass("currentrow");
+        $("#pattern"+hb(mod.currentpattern())).scrollTop(mod.row*16);
+        if (oldpos != mod.position) {
+          if (oldpos>=0) $(".currentpattern").removeClass("currentpattern");
+          $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
+        }
       }
       if (oldrow != mod.row || oldpos != mod.position) {
         $("#modtimer").replaceWith("<span id=\"modtimer\">"+
@@ -340,10 +369,6 @@ $(document).ready(function() {
         $("#modsamples").children().removeClass("activesample");      
         for(c=0;c<mod.channels;c++)
           if (mod.noteon(c)) $("#sample"+hb(mod.currentsample(c)+1)).addClass("activesample");
-          
-        if (oldpos>=0 && oldrow>=0) $(".currentrow").removeClass("currentrow");
-        $("#pattern"+hb(mod.currentpattern())+"_row"+hb(mod.row)).addClass("currentrow");
-        $("#pattern"+hb(mod.currentpattern())).scrollTop(mod.row*16);
       }
       oldpos=mod.position;        
       oldrow=mod.row;
