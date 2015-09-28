@@ -357,6 +357,13 @@ Modplayer.prototype.currentsample = function(ch)
 }
 
 
+// get length of currently playing pattern
+Modplayer.prototype.currentpattlen = function()
+{
+  if (this.format=="mod" || this.format=="s3m") return 64;
+  return this.player.patternlen[this.player.patterntable[this.player.position]];
+}
+
 
 // create the web audio context
 Modplayer.prototype.createContext = function()

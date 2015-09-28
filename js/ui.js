@@ -357,10 +357,11 @@ $(document).ready(function() {
           $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
         }
       }
+
       if (oldrow != mod.row || oldpos != mod.position) {
         $("#modtimer").replaceWith("<span id=\"modtimer\">"+
           "pos <span class=\"hl\">"+hb(mod.position)+"</span>/<span class=\"hl\">"+hb(mod.songlen)+"</span> "+
-          "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">3f</span> "+
+          "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">"+hb(mod.currentpattlen()-1)+"</span> "+
           "speed <span class=\"hl\">"+mod.speed+"</span> "+
           "bpm <span class=\"hl\">"+mod.bpm+"</span> "+
           "filter <span class=\"hl\">"+(mod.filter ? "on" : "off")+"</span>"+
