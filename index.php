@@ -40,7 +40,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
 } else {
   echo "    <script type=\"text/javascript\">var mobileSafari=false;</script>";
 }
-?>    
+?>
     <script type="text/javascript" src="/js/utils.js"></script>
     <script type="text/javascript" src="/js/player.js"></script>
     <script type="text/javascript" src="/js/pt.js"></script>
@@ -51,7 +51,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
       window.musicPath='<?php echo $modulePath; ?>';
       window.musicLibrary=[];
 <?php
-  // randomize default song  
+  // randomize default song
   $defmod=$defmods[rand(0, count($defmods)-1)];
   if (array_key_exists('mod', $_REQUEST) && $_REQUEST['mod']!="") $defmod=$_REQUEST['mod'];
   if (array_key_exists('composer', $_REQUEST) && $_REQUEST['composer']!="") {
@@ -90,7 +90,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
           <a class="down" title="Visualization type" href="#" id="modvis">[trks]</a>
           <a title="Amiga A500 lowpass filter" href="#" id="modamiga">[filt]</a>
           <a href="#" id="load_song">[load song]</a>
-        </div> 
+        </div>
         <div id="modchannels"><div id="even-channels"></div><div id="odd-channels"></div></div>
         <div id="modpattern"></div>
         <div style="clear:both"></div>
@@ -101,7 +101,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
           Source code available on <a style="color:#cce;" target="_blank" href="https://github.com/jhalme/webaudio-mod-player">GitHub</a>.
         </div>
       </div>
-      
+
       <div style="display:none;" id="loadercontainer">
         <div id="musiclibrary">
           <br/>dh0:music_library&gt;<br/><br/>
@@ -117,7 +117,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
           <input value="" id="loadfilter" size="48" placeholder="Filter songs" style="border: 1px solid #8f8; background-color: #181818" />
           </div>
         </div>
-        
+
         <div id="playlist">
         <br/>ram:playlist&gt;<br/><br/>
         <select size="24" id="playlist_box">
@@ -129,9 +129,9 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
             <a href="#" id="playlist_remove">[remove]</a>&nbsp;
             <a href="#" id="playlist_clear">[clear]</a>&nbsp;
             <a href="#" id="playlist_jumpto">[play song]</a>
-          </div>        
+          </div>
         </div>
-        
+
         <div style="clear:both"></div>
       </div>
 
