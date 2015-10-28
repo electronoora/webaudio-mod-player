@@ -8,7 +8,7 @@ body {
   font-size: 16px; background-color: #000; color: #ccc; font-weight: normal;
   line-height: 16px;
 }
-a { color: #99c; text-decoration: none;}
+a { color: #99c; text-decoration: none; }
 a:visited { color: #99c; }
 a:hover { color: #ddf; }
 a.down:hover { color: #fdd !important; }
@@ -19,7 +19,7 @@ a.inactive, a.inactive:visited, a.inactive:hover { color: #445; }
 .tdalink:hover { color: #558 !important; }
 .tdalink:visited { color:#113 !important; }
 
-select, input { 
+select, input {
   background-color: #000; color: #8f8;
   font-family: Topaz;
   font-size: 16px;
@@ -36,8 +36,8 @@ option { color: #8f8; height: 16px; line-height: 16px; padding: 0; }
 option:focus,
 option:active,
 option:checked {
-    background-color: #aae;
-    color: #fff;
+  background-color: #aae;
+  color: #fff;
 }
 
 ::-webkit-scrollbar {
@@ -61,7 +61,7 @@ option:checked {
 
 #modtitle { white-space: pre; color: #fff; }
 #modinfo { color: #aaa; }
-#modtimer { color: #99b; }      
+#modtimer { color: #99b; }
 
 #modsamples { white-space:pre; float:right; margin-left:8px; color: #888 }
 
@@ -72,7 +72,7 @@ option:checked {
 #load_song { float:right; }
 
 #modfile { float:left; width: 480px; }
-#fileinfo { width: 480px; float:left; margin-left: 0px; margin-top: 0px; color: #aae;}
+#fileinfo { width: 480px; float:left; margin-left: 0px; margin-top: 0px; color: #aae; }
 
 #playlist_box { width: 416px; }
 
@@ -115,8 +115,8 @@ option:checked {
 }
 
 #modchannels {
- white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; color: #99b; 
- display: none;
+  white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; color: #99b;
+  display: none;
 }
 
 #even-channels {

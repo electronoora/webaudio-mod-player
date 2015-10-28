@@ -13,7 +13,7 @@
 
   // initialize to empty
   $library=array();
-  
+
   // songs grouped by composer
   foreach (glob($songpath."/*", GLOB_ONLYDIR) as $composer) {
     $d=array();
@@ -22,14 +22,13 @@
 
     $dir=opendir($composer);
     $mods=array();
-    while($mod=readdir($dir)) $mods[]=$mod; 
+    while($mod=readdir($dir)) $mods[]=$mod;
     sort($mods);
     foreach($mods as $mod) {
-      if (is_file($composer."/".$mod)) 
-      $songs[]=array('file'=>$mod, 'size'=>filesize($composer."/".$mod));
+      if (is_file($composer."/".$mod))
+        $songs[]=array('file'=>$mod, 'size'=>filesize($composer."/".$mod));
     }
     closedir($dir);
-
 
     $d['songs']=$songs;
     $library[]=$d;

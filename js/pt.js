@@ -37,7 +37,7 @@ function Protracker()
   // finetune multipliers
   this.finetunetable=new Float32Array(16);
   for(t=0;t<16;t++) this.finetunetable[t]=Math.pow(2, (t-8)/12/8);
-  
+
   // calc tables for vibrato waveforms
   this.vibratotable=new Array();
   for(t=0;t<4;t++) {
@@ -79,7 +79,7 @@ function Protracker()
 
 // clear song data
 Protracker.prototype.clearsong = function()
-{  
+{
   this.title="";
   this.signature="";
 
@@ -107,11 +107,11 @@ Protracker.prototype.clearsong = function()
   this.pattern=new Array();
   this.note=new Array();
   this.pattern_unpack=new Array();
-  
+
   this.looprow=0;
   this.loopstart=0;
   this.loopcount=0;
-  
+
   this.patterndelay=0;
   this.patternwait=0;
 }
@@ -135,14 +135,14 @@ Protracker.prototype.initialize = function()
   this.patterndelay=0;
   this.patternwait=0;
   this.endofsong=false;
-  
+
   this.channel=new Array();
   for(i=0;i<this.channels;i++) {
     this.channel[i]=new Object();
     this.channel[i].sample=0;
     this.channel[i].period=214;
     this.channel[i].voiceperiod=214;
-    this.channel[i].note=24;    
+    this.channel[i].note=24;
     this.channel[i].volume=64;
     this.channel[i].command=0;
     this.channel[i].data=0;
@@ -169,7 +169,7 @@ Protracker.prototype.initialize = function()
 Protracker.prototype.parse = function(buffer)
 {
   var i,j,c;
-  
+
   for(i=0;i<4;i++) this.signature+=String.fromCharCode(buffer[1080+i]);
   switch (this.signature) {
     case "M.K.":
@@ -181,7 +181,7 @@ Protracker.prototype.parse = function(buffer)
     case "6CHN":
       this.channels=6;
       break;
-      
+
     case "8CHN":
     case "FLT8":
       this.channels=8;
@@ -190,13 +190,13 @@ Protracker.prototype.parse = function(buffer)
     case "28CH":
       this.channels=28;
       break;
-    
+
     default:
       return false;
   }
   this.chvu=new Array();
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
-  
+
   i=0;
   while(buffer[i] && i<20)
     this.title=this.title+String.fromCharCode(buffer[i++]);
@@ -204,9 +204,9 @@ Protracker.prototype.parse = function(buffer)
   for(i=0;i<this.samples;i++) {
     var st=20+i*30;
     j=0;
-    while(buffer[st+j] && j<22) { 
+    while(buffer[st+j] && j<22) {
       this.sample[i].name+=
-        ((buffer[st+j]>0x1f) && (buffer[st+j]<0x7f)) ? 
+        ((buffer[st+j]>0x1f) && (buffer[st+j]<0x7f)) ?
         (String.fromCharCode(buffer[st+j])) :
         (" ");
       j++;
@@ -261,7 +261,7 @@ Protracker.prototype.parse = function(buffer)
       }
     }
   }
-  
+
   var sst=1084+this.patterns*patlen;
   for(i=0;i<this.samples;i++) {
     this.sample[i].data=new Float32Array(this.sample[i].length);
@@ -293,8 +293,8 @@ Protracker.prototype.parse = function(buffer)
   if (this.context) {
     if (this.filter) {
       this.lowpassNode.frequency.value=3275;
-    } else { 
-      this.lowpassNode.frequency.value=28867;    
+    } else {
+      this.lowpassNode.frequency.value=28867;
     }
   }
 
@@ -310,7 +310,7 @@ Protracker.prototype.parse = function(buffer)
 
 
 // advance player
-Protracker.prototype.advance=function(mod) {
+Protracker.prototype.advance = function(mod) {
   var spd=(((mod.samplerate*60)/mod.bpm)/4)/6;
 
   // advance player
@@ -414,17 +414,17 @@ Protracker.prototype.mix = function(ape, mod) {
           }
         }
         mod.channel[ch].voiceperiod=mod.channel[ch].period;
-        
+
         // kill empty samples
         if (!mod.sample[mod.channel[ch].sample].length) mod.channel[ch].noteon=0;
 
-        // effects        
+        // effects
         if (mod.flags&1) {
           if (!mod.tick) {
             // process only on tick 0
             mod.effects_t0[mod.channel[ch].command](mod, ch);
           } else {
-            mod.effects_t1[mod.channel[ch].command](mod, ch);    
+            mod.effects_t1[mod.channel[ch].command](mod, ch);
           }
         }
 
@@ -441,14 +441,14 @@ Protracker.prototype.mix = function(ape, mod) {
         if ((mod.channel[ch].flags&1 || mod.flags&2) && mod.channel[ch].voiceperiod)
           mod.channel[ch].samplespeed=
             7093789.2/(mod.channel[ch].voiceperiod*2) * mod.finetunetable[mod.sample[mod.channel[ch].sample].finetune+8] / mod.samplerate;
-        
+
         // advance vibrato on each new tick
         if (mod.flags&1) {
           mod.channel[ch].vibratopos+=mod.channel[ch].vibratospeed;
           mod.channel[ch].vibratopos&=0x3f;
         }
 
-        // mix channel to output        
+        // mix channel to output
         och=och^(ch&1);
         f=0.0;
         if (mod.channel[ch].noteon) {
@@ -474,11 +474,11 @@ Protracker.prototype.mix = function(ape, mod) {
 
         // clear channel flags
         mod.channel[ch].flags=0;
-      } 
+      }
       mod.offset++;
-      mod.flags&=0x70;      
+      mod.flags&=0x70;
     }
-    
+
     // a more headphone-friendly stereo separation (aka. betterpaula)
     if (mod.separation) {
       t=outp[0];
@@ -550,7 +550,7 @@ Protracker.prototype.effect_t0_c=function(mod, ch) { // c set volume
 Protracker.prototype.effect_t0_d=function(mod, ch) { // d pattern break
   mod.breakrow=((mod.channel[ch].data&0xf0)>>4)*10 + (mod.channel[ch].data&0x0f);
   if (!(mod.flags&16)) mod.patternjump=mod.position+1;
-  mod.flags|=16;  
+  mod.flags|=16;
 }
 Protracker.prototype.effect_t0_e=function(mod, ch) { // e
   var i=(mod.channel[ch].data&0xf0)>>4;
@@ -626,11 +626,11 @@ Protracker.prototype.effect_t0_ed=function(mod, ch) { // ed delay sample
   if (mod.tick==(mod.channel[ch].data&0x0f)) {
     // start note
     var p=mod.patterntable[mod.position];
-    var pp=mod.row*4*mod.channels + ch*4;            
+    var pp=mod.row*4*mod.channels + ch*4;
     n=(mod.pattern[p][pp]&0x0f)<<8 | mod.pattern[p][pp+1];
     if (n) {
       mod.channel[ch].period=n;
-      mod.channel[ch].voiceperiod=mod.channel[ch].period;      
+      mod.channel[ch].voiceperiod=mod.channel[ch].period;
       mod.channel[ch].samplepos=0;
       if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
       mod.channel[ch].flags|=3; // recalc speed
@@ -673,7 +673,7 @@ Protracker.prototype.effect_t1_1=function(mod, ch) { // 1 slide up
 Protracker.prototype.effect_t1_2=function(mod, ch) { // 2 slide down
   mod.channel[ch].period+=mod.channel[ch].slidespeed;
   if (mod.channel[ch].period>856) mod.channel[ch].period=856;
-  mod.channel[ch].flags|=3; // recalc speed                
+  mod.channel[ch].flags|=3; // recalc speed
 }
 Protracker.prototype.effect_t1_3=function(mod, ch) { // 3 slide to note
   if (mod.channel[ch].period < mod.channel[ch].slideto) {
@@ -709,7 +709,6 @@ Protracker.prototype.effect_t1_6=function(mod, ch) { // 6 volslide + vibrato
 Protracker.prototype.effect_t1_7=function(mod, ch) { // 7
 }
 Protracker.prototype.effect_t1_8=function(mod, ch) { // 8 unused
-
 }
 Protracker.prototype.effect_t1_9=function(mod, ch) { // 9 set sample offset
 }
@@ -722,7 +721,7 @@ Protracker.prototype.effect_t1_a=function(mod, ch) { // a volume slide
   if (!(mod.channel[ch].data&0xf0)) {
     // x is zero, slide down
     mod.channel[ch].volume-=(mod.channel[ch].data&0x0f);
-    if (mod.channel[ch].volume<0) mod.channel[ch].volume=0;                  
+    if (mod.channel[ch].volume<0) mod.channel[ch].volume=0;
   }
 }
 Protracker.prototype.effect_t1_b=function(mod, ch) { // b pattern jump

@@ -2,41 +2,42 @@
   user interface stuff for the web audio module player
   (c) 2012-2014 firehawk/tda
 */
+
 var notelist=new Array("C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-");
 
 function notef(n,s,v,c,d,cc)
 {
   function prn(n) { return (n==254)?"===":("<span class=\"note\">"+notelist[n&0x0f]+(n>>4)+"</span>"); }
 
-  // 14 chars per channel (max 112)  
+  // 14 chars per channel (max 112)
   if (cc<=8) return ((n<255) ? (prn(n)+" ") : ("... "))+
     (s ? ("<span class=\"sample\">"+hb(s)+"</span> ") : (".. "))+
     ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span> "):(".. "))+
     ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") : "...")+
     "|";
-      
+
   // 11 chars (max 110)
   if (cc<=10) return ((n<255) ? prn(n) : ("..."))+
     (s ? ("<span class=\"sample\">"+hb(s)+"</span>") : (".."))+
     ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):(".."))+
     ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") : "...")+
     "|";
-      
+
   // 9 chars (max 108)
   if (cc<=12) return ((n<255) ? prn(n) : ("..."))+
     (s ? ("<span class=\"sample\">"+hb(s)+"</span>") :
     ((v<=64)?("<span class=\"volume\">"+hb(v)+"</span>"):("..")))+
     ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") : "...")+
     "|";
-      
+
   // 7 chars (max 112)
   if (cc<=16) return ((n<255) ? prn(n) : ("..."))+
     ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
     ( s ? ("<span class=\"sample\">"+hb(s)+"</span>.") : ( (v<=64)?("<span class=\"volume\">"+hb(v)+"</span>."):("...")))
     )+"|";
-      
+
   // 3 chars (max 96)
-  return ((n<255) ? prn(n) : 
+  return ((n<255) ? prn(n) :
     (s ? (".<span class=\"sample\">"+hb(s)+"</span>") :
     ((c!=0x2e) ? ("<span class=\"command\">"+String.fromCharCode(c)+hb(d)+"</span>") :
     ((v<=64) ? (" <span class=\"volume\">"+hb(v)+"</span>"):("...")))));
@@ -49,6 +50,7 @@ function hb(n)
   if (s.length==1) s='0'+s;
   return s.toUpperCase();
 }
+
 function hw(n)
 {
   if (typeof n == "undefined") return "0000";
@@ -89,7 +91,7 @@ function vu(l)
   b+='</span><span style="color:#fea;">';
   for(;i<16;i++) b+=(i<f)?"&#x00BB;":"&nbsp;";
   b+='</span><span style="color:#faa;">';
-  for(;i<20;i++) b+=(i<f)?"&#x00BB;":"&nbsp;";  
+  for(;i<20;i++) b+=(i<f)?"&#x00BB;":"&nbsp;";
   b+='</span>';
 
   return b;
@@ -136,7 +138,7 @@ function playFromPlaylist(module, autostart)
        window.currentModule=$("#playlist_box option:selected").val();
        window.playlistPosition=$("#playlist_box option").index($("#playlist_box option:selected"));
        window.playlistActive=true;
-       module.load($("#playlist_box option:selected").val());      
+       module.load($("#playlist_box option:selected").val());
        clearInterval(loadInterval);
     }
   }, 200);
@@ -145,7 +147,7 @@ function playFromPlaylist(module, autostart)
 function updateSelectBox(e)
 {
   var i, j, f, o="";
-  
+
   var filter=$("#loadfilter").val().toLowerCase();
   for(i=0;i<window.musicLibrary.length;i++) {
     og=""; f=0;
@@ -163,9 +165,9 @@ function updateSelectBox(e)
     } else {
       og+='<optgroup class="'+((i&1)?"odd":"even")+'" label="'+window.musicLibrary[i].composer+'">';
       for(j=0;j<window.musicLibrary[i].songs.length;j++) {
-        if (filter=="" || 
+        if (filter=="" ||
            window.musicLibrary[i].composer.toLowerCase().indexOf(filter)>=0 ||
-           window.musicLibrary[i].songs[j].file.toLowerCase().indexOf(filter)>=0) {        
+           window.musicLibrary[i].songs[j].file.toLowerCase().indexOf(filter)>=0) {
           og+='<option class="'+((i&1)?"odd":"even")+'" value="'+window.musicLibrary[i].composer+'/'+
             window.musicLibrary[i].songs[j].file+'">'+window.musicLibrary[i].songs[j].file+' '+
             '<span class="filesize">('+window.musicLibrary[i].songs[j].size+' bytes)</span></option>';
@@ -176,7 +178,7 @@ function updateSelectBox(e)
     }
     if (f) o+=og;
   }
-  $("#modfile").html(o);  
+  $("#modfile").html(o);
   $("#modfile option").dblclick(function() {
     $("#load").click();
   });
@@ -191,16 +193,16 @@ function setVisualization(mod, v)
       $(".currentpattern").removeClass("currentpattern");
       $("#modchannels").hide();
       break;
-      
+
     case 1:
       $("#modvis").addClass("down");
       if (mod && mod.playing) $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
       $("#modchannels").hide();
       break;
-      
+
     case 2:
       $("#modvis").addClass("down");
-      $(".currentpattern").removeClass("currentpattern");      
+      $(".currentpattern").removeClass("currentpattern");
       $("#modchannels").show();
       break;
   }
@@ -215,13 +217,13 @@ $(document).ready(function() {
 
   window.playlistPosition=0;
   window.playlistActive=false;
-  
+
   if (mobileSafari) {
     setVisualization(null, 0);
   } else {
     setVisualization(null, 1);
   }
-  
+
   if(typeof(Storage) !== "undefined") {
     // read previous button states from localStorage
     if (localStorage["modrepeat"]) {
@@ -230,7 +232,7 @@ $(document).ready(function() {
         module.setrepeat(true);
       } else {
         $("#modrepeat").removeClass("down");
-        module.setrepeat(false);      
+        module.setrepeat(false);
       }
     }
     if (localStorage["modamiga"]) {
@@ -245,24 +247,24 @@ $(document).ready(function() {
     if (localStorage["modpaula"]) {
       switch (parseInt(localStorage["modpaula"])) {
         case 0:
-        $("#modpaula").addClass("stereo");        
+        $("#modpaula").addClass("stereo");
         $("#modpaula").addClass("down");
-        $("#modpaula").html("[))((]");    
+        $("#modpaula").html("[))((]");
         module.setseparation(0);
         break;
-        
+
         case 1:
-        $("#modpaula").removeClass("stereo");        
+        $("#modpaula").removeClass("stereo");
         $("#modpaula").addClass("down");
-        $("#modpaula").html("[)oo(]");    
-        module.setseparation(1);        
+        $("#modpaula").html("[)oo(]");
+        module.setseparation(1);
         break;
-        
+
         case 2:
-        $("#modpaula").removeClass("stereo");        
+        $("#modpaula").removeClass("stereo");
         $("#modpaula").removeClass("down");
-        $("#modpaula").html("[mono]");    
-        module.setseparation(2);        
+        $("#modpaula").html("[mono]");
+        module.setseparation(2);
         break;
       }
     }
@@ -274,7 +276,7 @@ $(document).ready(function() {
       setVisualization(null, parseInt(localStorage["modvis"]));
   }
 
-  module.onReady=function() {  
+  module.onReady=function() {
     $("#modtitle").html(rpe(pad(this.title, 28)));
     $("#modsamples").html("");
     for(i=0;i<31;i++)
@@ -289,7 +291,7 @@ $(document).ready(function() {
       $("title").html(s[0]+" - Protracker module player for Web Audio");
       window.history.pushState("object of string", "Title", "/"+s[0]);
     }
-    
+
     if (window.playlistActive) {
       $("#prev_track").removeClass("inactive");
       $("#next_track").removeClass("inactive");
@@ -297,7 +299,7 @@ $(document).ready(function() {
       $("#prev_track").addClass("inactive");
       $("#next_track").addClass("inactive");
     }
-    
+
     var pd="";
     for(p=0;p<this.patterns;p++) {
       var pp, pdata;
@@ -356,11 +358,11 @@ $(document).ready(function() {
           "filter <span class=\"hl\">"+(mod.filter ? "on" : "off")+"</span>"+
           "</span>");
 
-        $("#modsamples").children().removeClass("activesample");      
+        $("#modsamples").children().removeClass("activesample");
         for(c=0;c<mod.channels;c++)
           if (mod.noteon(c)) $("#sample"+hb(mod.currentsample(c)+1)).addClass("activesample");
       }
-      oldpos=mod.position;        
+      oldpos=mod.position;
       oldrow=mod.row;
     }, (mobileSafari ? 80.0 : 40.0) ); // half display update speed for iOS
   };
@@ -379,7 +381,7 @@ $(document).ready(function() {
       var opt=$("#playlist_box option:selected");
       if (opt.length) {
         var n=$(opt).next("option");
-        if (n.length) {  
+        if (n.length) {
           // load next track
         } else {
           // jump to first
@@ -406,7 +408,7 @@ $(document).ready(function() {
       module.pause();
       return false;
   });
-  
+
   $("#go_back").click(function(){
     module.jump(-1);
     return false;
@@ -415,22 +417,22 @@ $(document).ready(function() {
   $("#go_fwd").click(function(){
     module.jump(1);
     return false;
-  });  
-  
+  });
+
   $("#modrepeat").click(function(){
     $("#modrepeat").toggleClass("down");
     module.setrepeat($("#modrepeat").hasClass("down"));
     if(typeof(Storage) !== "undefined") localStorage.setItem("modrepeat", $("#modrepeat").hasClass("down"));
     return false;
   });
-  
+
   $("#modpaula").click(function() {
     if ($("#modpaula").hasClass("down")) {
       if ($("#modpaula").hasClass("stereo")) {
-        $("#modpaula").toggleClass("stereo");        
+        $("#modpaula").toggleClass("stereo");
         $("#modpaula").toggleClass("down");
         // mono
-        $("#modpaula").html("[mono]");    
+        $("#modpaula").html("[mono]");
         module.setseparation(2);
         if(typeof(Storage) !== "undefined") localStorage.setItem("modpaula", 2);
       } else {
@@ -449,23 +451,23 @@ $(document).ready(function() {
     }
     return false;
   });
-  
+
   $("#modvis").click(function() {
     var v=(window.moduleVis+1)%3;
     setVisualization(module, v);
     if(typeof(Storage) !== "undefined") localStorage.setItem("modvis", v);
     return false;
   });
-  
+
   $("#modamiga").click(function() {
     $("#modamiga").toggleClass("down");
     if ($("#modamiga").hasClass("down")) {
       module.setamigamodel("500");
       if(typeof(Storage) !== "undefined") localStorage.setItem("modamiga", "500");
     } else {
-      module.setamigamodel("1200");      
+      module.setamigamodel("1200");
       if(typeof(Storage) !== "undefined") localStorage.setItem("modamiga", "1200");
-    }  
+    }
   });
 
   $("#load_song").click(function(){
@@ -497,32 +499,30 @@ $(document).ready(function() {
       if (!module.delayload) {
          window.currentModule=$("#modfile").val();
          window.playlistActive=false;
-         $("#modtimer").html("loading");         
+         $("#modtimer").html("loading");
          module.load(musicPath+$("#modfile").val());
          clearInterval(loadInterval);
       }
     }, 200);
     return false;
   });
-  
+
   $("#load_cancel").click(function(){
     $("#loadercontainer").hide();
     $("#innercontainer").show();
     return false;
   });
-  
+
   $("#add_playlist").click(function(){
     var song=$("#modfile").val();
     if (addToPlaylist(song)) refreshStoredPlaylist();
     return false;
   });
 
-  
   $("#modfile").keypress(function(event) {
     if (event.keyCode==13) $("#load").click();
   });
 
-  
   $("#playlist_remove").click(function(){
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
@@ -538,7 +538,7 @@ $(document).ready(function() {
     refreshStoredPlaylist();
     return false;
   });
-  
+
   $("#playlist_jumpto").click(function(){
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
@@ -552,18 +552,18 @@ $(document).ready(function() {
            window.currentModule=$("#playlist_box option:selected").val();
            window.playlistPosition=$("#playlist_box option").index($("#playlist_box option:selected"));
            window.playlistActive=true;
-           module.load($("#playlist_box option:selected").val());      
+           module.load($("#playlist_box option:selected").val());
            clearInterval(loadInterval);
         }
       }, 200);
     }
     return false;
   });
-  
+
   $("#playlist_box option").dblclick(function() {
     $("#playlist_jumpto").click();
-  });  
-  
+  });
+
   $("#playlist_up").click(function(){
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
@@ -599,12 +599,12 @@ $(document).ready(function() {
     }
     return false;
   });
-  
+
   $("#next_track").click(function(){
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
       var n=$(opt).next("option");
-      if (n.length) {  
+      if (n.length) {
         // load next track
       } else {
         // jump to first
@@ -615,7 +615,7 @@ $(document).ready(function() {
     }
     return false;
   });
-  
+
   $("#prev_track").click(function(){
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
@@ -624,16 +624,16 @@ $(document).ready(function() {
         // load previous track
       } else {
         // jump to last
-        p=$("#playlist_box option:last");        
+        p=$("#playlist_box option:last");
       }
-      $("#playlist_box").val($(p).val()).change();      
+      $("#playlist_box").val($(p).val()).change();
       playFromPlaylist(module, module.playing);
     }
     return false;
   });
 
   $("#loadfilter").on("input", updateSelectBox);
-  
+
   $(document).keyup(function(ev){
     // keyboard shortcuts for main player screen
     if ($("#innercontainer").is(":visible")) {
@@ -647,7 +647,7 @@ $(document).ready(function() {
       }
       if (ev.keyCode==76) { // 'L' to open loading screen
         $("#load_song").click();
-        event.preventDefault(); return false;      
+        event.preventDefault(); return false;
       }
       if (ev.keyCode==37) { // left to jump to previous order
         $("#go_back").click();
@@ -655,10 +655,10 @@ $(document).ready(function() {
       }
       if (ev.keyCode==39) { // right to jump to next order
         $("#go_fwd").click();
-        event.preventDefault(); return false;        
+        event.preventDefault(); return false;
       }
     }
-   
+
     // keyboard shortcuts for load/playlist screen
     if ($("#loadercontainer").is(":visible")) {
       if (ev.keyCode==27) {
@@ -683,7 +683,7 @@ $(document).ready(function() {
       $("#load_song").click();
     } else {
       $('#modfile option[value="'+window.currentModule+'"]').attr('selected', 'selected');
-      if ($("#modfile").val()!="") module.load(musicPath+$("#modfile").val());  
+      if ($("#modfile").val()!="") module.load(musicPath+$("#modfile").val());
     }
   }
   request.send();
