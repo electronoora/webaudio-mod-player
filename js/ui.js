@@ -242,17 +242,6 @@ $(document).ready(function() {
         module.setamigamodel("1200");
       }
     }
-    if (localStorage["modclock"]) {
-      if (localStorage["modclock"]=="PAL") {
-        $("#modclock").addClass("down");
-        $("#modclock").html("[&nbsp;PAL]");
-        module.setamigatype(true);
-      } else {
-        $("#modclock").removeClass("down");
-        $("#modclock").html("[NTSC]");
-        module.setamigatype(false);
-      }
-    }
     if (localStorage["modpaula"]) {
       switch (parseInt(localStorage["modpaula"])) {
         case 0:
@@ -477,20 +466,6 @@ $(document).ready(function() {
       module.setamigamodel("1200");      
       if(typeof(Storage) !== "undefined") localStorage.setItem("modamiga", "1200");
     }  
-  });
-
-  $("#modclock").click(function() {
-    $("#modclock").toggleClass("down");
-    if ($("#modclock").hasClass("down")) {
-      $("#modclock").html("[&nbsp;PAL]");
-      module.setamigatype(true);
-      if(typeof(Storage) !== "undefined") localStorage.setItem("modclock", "PAL");
-    } else {
-      $("#modclock").html("[NTSC]");    
-      module.setamigatype(false);      
-      if(typeof(Storage) !== "undefined") localStorage.setItem("modclock", "NTSC");
-    }
-    return false;
   });
 
   $("#load_song").click(function(){
