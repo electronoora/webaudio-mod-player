@@ -324,7 +324,6 @@ Modplayer.prototype.patterndata = function(pn)
     for(i=0;i<this.player.patternlen[pn];i++) for(c=0;c<this.player.channels;c++) {
       if (patt[i*5*this.channels+c*5+0]<97)
         patt[i*5*this.channels+c*5+0]=(patt[i*5*this.channels+c*5+0]%12)|(Math.floor(patt[i*5*this.channels+c*5+0]/12)<<4);
-      if (patt[i*5*this.channels+c*5+2]>=0x50 && patt[i*5*this.channels+c*5+2]<=0x5e) patt[i*5*this.channels+c*5+2]+=0xa0;
       if (patt[i*5*this.channels+c*5+3]==255) patt[i*5*this.channels+c*5+3]=0x2e;
       else {
         if (patt[i*5*this.channels+c*5+3]<0x0a) {
