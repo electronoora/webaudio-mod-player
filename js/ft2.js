@@ -4,13 +4,12 @@
 
   todo:
   - Inf/NaN crash in respirator, breaking the sky and beystars
-  - sample sequences in te2-rx.xm and little_man.xm play off sync
+  - sample sequences in te-2rx.xm and little_man.xm play off sync
   - fix clicks - ramping isn's always working as intended
-  - enable pan envelopes, sample panning
   - implement missing volume column effect commands
   - implement missing ft2 commands
   - implement instrument vibrato
-  - compatibility for versions older than 104h?
+  - compatibility for versions older than 104h
   - too many other bugs to list
 
   reading material:
@@ -658,6 +657,10 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
       s=mod.instrument[i-1].samplemap[mod.channel[ch].note];
       mod.channel[ch].sampleindex=s;
       mod.channel[ch].volume=mod.instrument[i-1].sample[s].volume;
+      
+      // set pan from sample
+      mod.pan_r[ch]=mod.instrument[i-1].sample[s].panning/255.0;
+      mod.pan_l[ch]=1.0-mod.pan_r[ch];
     }
     mod.channel[ch].voicevolume=mod.channel[ch].volume;
   }
@@ -854,9 +857,11 @@ Fasttracker.prototype.mix = function(ape, mod) {
               if (!mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) fl*=mod.channel[ch].fadeoutpos/65536.0;
             }
 
-            // pan samples (todo: pan envelope)
-            fr=fl*mod.pan_r[ch];
-            fl*=mod.pan_l[ch];
+            // pan samples
+            var pe=0.5;
+            if (mod.instrument[i].pantype&1) pe=mod.instrument[i].panenv[mod.channel[ch].panenvpos];
+            fr=fl*(mod.pan_r[ch] + pe);
+            fl*=(mod.pan_l[ch] + (1.0-pe));
           }
           outp[0]+=fl;
           outp[1]+=fr;
