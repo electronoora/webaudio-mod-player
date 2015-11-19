@@ -3,6 +3,8 @@
   (c) 2015 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
+  - Inf/NaN crash in respirator, breaking the sky and beystars
+  - sample sequences in te2-rx.xm and little_man.xm play off sync
   - fix clicks - ramping isn's always working as intended
   - enable pan envelopes, sample panning
   - implement missing volume column effect commands
@@ -702,6 +704,8 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
         mod.channel[ch].fadeoutpos=65535;
         mod.channel[ch].volenvpos=0;
         mod.channel[ch].panenvpos=0;
+        mod.channel[ch].trigramp=0.0;
+        mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;        
       }
       if ((mod.channel[ch].command != 0x03) && (mod.channel[ch].command != 0x05)) {
         mod.channel[ch].note=n;
@@ -709,8 +713,6 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
         mod.channel[ch].voiceperiod=mod.channel[ch].period;
         mod.channel[ch].flags|=3; // force sample speed recalc
       }
-      mod.channel[ch].trigramp=0.0;
-      mod.channel[ch].trigrampfrom=mod.channel[ch].currentsample;
     }
     // in either case, set the slide to note target to note period
     mod.channel[ch].slideto=pv;
@@ -756,7 +758,7 @@ Fasttracker.prototype.mix = function(ape, mod) {
         p=mod.patterntable[mod.position];
         pp=mod.row*5*mod.channels + ch*5;
 
-        if (mod.flags&3) mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
+        if (mod.flags&1) mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
 
         if (mod.flags&2) { // new row
           mod.channel[ch].command=mod.pattern[p][pp+3];
@@ -791,7 +793,7 @@ Fasttracker.prototype.mix = function(ape, mod) {
         }
 
         // setup volramp if voice volume changed
-        if (mod.flags&3) {
+        if (mod.flags&1) {
           if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
             mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
             mod.channel[ch].volramp=0.0;
@@ -837,19 +839,19 @@ Fasttracker.prototype.mix = function(ape, mod) {
             }
             mod.channel[ch].currentsample=fl;
 
-            pv=mod.channel[ch].voicevolume/64.0;
-            if (mod.instrument[i].voltype&1) {
-              pv*=mod.instrument[i].volenv[mod.channel[ch].volenvpos];
-              if (!mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) pv*=mod.channel[ch].fadeoutpos/65536.0;
-            }
-            fr=fl*pv;
-
-            // volume ramps
+            // ramp volume changes over 64 samples to avoid clicks
+            fr=fl*(mod.channel[ch].voicevolume/64.0);
             if (mod.channel[ch].volramp<1.0) {
               fl=mod.channel[ch].volramp*fr + (1.0-mod.channel[ch].volramp)*(fl*(mod.channel[ch].volrampfrom/64.0));
               mod.channel[ch].volramp+=(1.0/64.0);
-            } else {
+            }
+            else {
               fl=fr;
+            }
+
+            if (mod.instrument[i].voltype&1) {
+              fl*=mod.instrument[i].volenv[mod.channel[ch].volenvpos];
+              if (!mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) fl*=mod.channel[ch].fadeoutpos/65536.0;
             }
 
             // pan samples (todo: pan envelope)
