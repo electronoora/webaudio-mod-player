@@ -8,8 +8,6 @@
   - implement missing volume column effect commands
   - implement missing ft2 commands
   - implement instrument vibrato
-  - portamentos are now broken with linear periods?
-  - fix vibrato to check linear/amiga periods
   - compatibility for versions older than 104h?
   - too many other bugs to list
 
@@ -272,7 +270,7 @@ Fasttracker.prototype.parse = function(buffer)
   this.patterns=le_word(buffer, offset+10);
   this.instruments=le_word(buffer, offset+12);
 
-  this.amigaperiods=le_word(buffer, offset+14)&1;
+  this.amigaperiods=(!le_word(buffer, offset+14))&1;
 
   this.initSpeed=le_word(buffer, offset+16);
   this.initBPM=le_word(buffer, offset+18);
@@ -285,8 +283,8 @@ Fasttracker.prototype.parse = function(buffer)
   maxpatt++;
 
   // allocate pattern data and initialize them all
-  this.pattern=new Array(maxpatt); //this.patterns);
-  this.patternlen=new Array(maxpatt); //this.patterns);
+  this.pattern=new Array(maxpatt);
+  this.patternlen=new Array(maxpatt);
   for(i=0;i<maxpatt;i++) {
     // initialize the pattern to defaults prior to unpacking
     this.patternlen[i]=64;
@@ -339,9 +337,9 @@ Fasttracker.prototype.parse = function(buffer)
       if (this.pattern[i][k+3]==0 && this.pattern[i][k+4]==0) this.pattern[i][k+3]=255;
 
       // remap volume column setvol to 0x00..0x40, tone porta to 0x50..0x5f and 0xff for nop
-      if (this.pattern[i][k+2]<0x10) this.pattern[i][k+2]=255;
-      if (this.pattern[i][k+2]>=0x10 && this.pattern[i][k+2]<=0x50) this.pattern[i][k+2]-=0x10;
-      if (this.pattern[i][k+2]>=0xf0) this.pattern[i][k+2]-=0xa0;
+      if (this.pattern[i][k+2]<0x10) { this.pattern[i][k+2]=0xff; }
+      else if (this.pattern[i][k+2]>=0x10 && this.pattern[i][k+2]<=0x50) { this.pattern[i][k+2]-=0x10; }
+      else if (this.pattern[i][k+2]>=0xf0) this.pattern[i][k+2]-=0xa0; //(this.pattern[i][k+2]&0x0f)|0x50;
       k+=5;
     }
     offset+=j;
@@ -510,7 +508,7 @@ Fasttracker.prototype.parse = function(buffer)
   this.ready=true;
   this.loading=false;
 
-  this.mixval=8.0 + this.channels*0.1; // todo: this is quite crude. ;)
+  this.mixval=8.0; // + this.channels*0.1; // todo: this is quite crude. ;)
 
   this.chvu=new Float32Array(this.channels);
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
@@ -539,7 +537,7 @@ Fasttracker.prototype.calcperiod = function(mod, note, finetune) {
 
 // advance player
 Fasttracker.prototype.advance = function(mod) {
-  var spd=(((mod.samplerate*60)/mod.bpm)/4)/6;
+  var spd=mod.samplerate/(mod.bpm*0.4);
 
   // advance player
   if (mod.offset>spd) {
@@ -655,14 +653,10 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
     mod.channel[ch].instrument=i-1;
 
     if (mod.instrument[i-1].samples) {
-      s=mod.instrument[i-1].samplemap[mod.channel[ch].note]; //-1];
+      s=mod.instrument[i-1].samplemap[mod.channel[ch].note];
       mod.channel[ch].sampleindex=s;
       mod.channel[ch].volume=mod.instrument[i-1].sample[s].volume;
     }
-//     else {
-//      mod.channel[ch].sampleindex=0;
-//      mod.channel[ch].volume=64;
-//    }
     mod.channel[ch].voicevolume=mod.channel[ch].volume;
   }
   i=mod.channel[ch].instrument;
@@ -700,13 +694,15 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
       }
     } else {
       // note is off, restart but don't set period if slide command
-      mod.channel[ch].samplepos=0;
-      mod.channel[ch].playdir=1;
-      if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
-      mod.channel[ch].noteon=1;
-      mod.channel[ch].fadeoutpos=65535;
-      mod.channel[ch].volenvpos=0;
-      mod.channel[ch].panenvpos=0;
+      if (mod.pattern[p][pp+1]) { // instrument set on row?
+        mod.channel[ch].samplepos=0;
+        mod.channel[ch].playdir=1;
+        if (mod.channel[ch].vibratowave>3) mod.channel[ch].vibratopos=0;
+        mod.channel[ch].noteon=1;
+        mod.channel[ch].fadeoutpos=65535;
+        mod.channel[ch].volenvpos=0;
+        mod.channel[ch].panenvpos=0;
+      }
       if ((mod.channel[ch].command != 0x03) && (mod.channel[ch].command != 0x05)) {
         mod.channel[ch].note=n;
         mod.channel[ch].period=pv;
@@ -970,6 +966,8 @@ Fasttracker.prototype.effect_vol_t0_d0=function(mod, ch, data) { // d0-df pannin
 Fasttracker.prototype.effect_vol_t0_e0=function(mod, ch, data) { // e0-ef panning slide right
 }
 Fasttracker.prototype.effect_vol_t0_f0=function(mod, ch, data) { // f0-ff tone porta
+//  if (data) mod.channel[ch].slidetospeed=data;
+//  if (!mod.amigaperiods) mod.channel[ch].slidetospeed*=4;
 }
 //////
 Fasttracker.prototype.effect_vol_t1_60=function(mod, ch, data) { // 60-6f vol slide down
@@ -996,6 +994,7 @@ Fasttracker.prototype.effect_vol_t1_d0=function(mod, ch, data) { // d0-df pannin
 Fasttracker.prototype.effect_vol_t1_e0=function(mod, ch, data) { // e0-ef panning slide right
 }
 Fasttracker.prototype.effect_vol_t1_f0=function(mod, ch, data) { // f0-ff tone porta
+//  mod.effect_t1_3(mod, ch);
 }
 
 
@@ -1007,13 +1006,13 @@ Fasttracker.prototype.effect_t0_0=function(mod, ch) { // 0 arpeggio
   mod.channel[ch].arpeggio=mod.channel[ch].data;
 }
 Fasttracker.prototype.effect_t0_1=function(mod, ch) { // 1 slide up
-  if (mod.channel[ch].data) mod.channel[ch].slideupspeed=mod.channel[ch].data*4; //*16;
+  if (mod.channel[ch].data) mod.channel[ch].slideupspeed=mod.channel[ch].data*4;
 }
 Fasttracker.prototype.effect_t0_2=function(mod, ch) { // 2 slide down
-  if (mod.channel[ch].data) mod.channel[ch].slidedownspeed=mod.channel[ch].data*4; //*16;
+  if (mod.channel[ch].data) mod.channel[ch].slidedownspeed=mod.channel[ch].data*4;
 }
 Fasttracker.prototype.effect_t0_3=function(mod, ch) { // 3 slide to note
-  if (mod.channel[ch].data) mod.channel[ch].slidetospeed=mod.channel[ch].data*4; //*16;
+  if (mod.channel[ch].data) mod.channel[ch].slidetospeed=mod.channel[ch].data*4;
 }
 Fasttracker.prototype.effect_t0_4=function(mod, ch) { // 4 vibrato
   if (mod.channel[ch].data&0x0f && mod.channel[ch].data&0xf0) {
