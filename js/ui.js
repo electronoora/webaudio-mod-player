@@ -109,20 +109,13 @@ function vu(l)
 
 function addToPlaylist(song)
 {
-  var a=song.split("/");
-  var songtitle="";
-  if (a.length > 3) {
-    songtitle=a[2]+"/"+a[3];
-  } else {
-    songtitle=a[2];
-  }
   var dupe=false;
   $("#playlist_box option").each(function(o) {
     if ($(this).val() == song) dupe=true;
   });
   if (!dupe) {
     var optclass=($("#playlist_box option").length & 1) ? "odd" : "even";
-    $("#playlist_box").append("<option class=\""+optclass+"\" value=\""+song+"\">"+songtitle+"</option>");
+    $("#playlist_box").append("<option class=\""+optclass+"\" value=\""+song+"\">"+song+"</option>");
   }
   return !dupe;
 }
@@ -148,7 +141,7 @@ function playFromPlaylist(module, autostart)
        window.currentModule=$("#playlist_box option:selected").val();
        window.playlistPosition=$("#playlist_box option").index($("#playlist_box option:selected"));
        window.playlistActive=true;
-       module.load($("#playlist_box option:selected").val());
+       module.load(musicPath+$("#playlist_box option:selected").val());
        clearInterval(loadInterval);
     }
   }, 200);
@@ -562,7 +555,7 @@ $(document).ready(function() {
            window.currentModule=$("#playlist_box option:selected").val();
            window.playlistPosition=$("#playlist_box option").index($("#playlist_box option:selected"));
            window.playlistActive=true;
-           module.load($("#playlist_box option:selected").val());
+           module.load(musicPath+$("#playlist_box option:selected").val());
            clearInterval(loadInterval);
         }
       }, 200);

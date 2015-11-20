@@ -57,8 +57,6 @@ function Modplayer()
 // load module from url into local buffer
 Modplayer.prototype.load = function(url)
 {
-  this.stop(); // just in case
-
   // try to identify file format from url and create a new
   // player class for it
   this.url=url;
