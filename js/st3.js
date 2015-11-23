@@ -3,7 +3,6 @@
   (c) 2015 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
-  - fix crash at pos 54 (0x36) in dune's control-e
   - are Exx, Fxx and Gxx supposed to share a single
     command data memory?
 
@@ -341,6 +340,7 @@ Screamtracker.prototype.parse = function(buffer)
       this.pattern[i][row*this.channels*5 + ch*5 + 4]=0;
     }
 
+    if (!offset) continue; // fix for control_e.s3m
     row=0; ch=0;
     offset+=2;
     while(row<64) {
