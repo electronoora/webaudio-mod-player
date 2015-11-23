@@ -3,7 +3,7 @@
   (c) 2015 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
-  - sample sequences in te-2rx.xm and little_man.xm play off sync
+  - sample sequences in te-2rx.xm, little_man.xm and yuki_satellites.xm play off sync
   - weird pattern data at pos 0x33 and 0x35 of aliensex.xm
   - fix clicks - ramping isn's always working as intended
   - implement missing volume column effect commands
@@ -215,6 +215,7 @@ Fasttracker.prototype.initialize = function()
     this.channel[i].volume=64;
     this.channel[i].voiceperiod=0;
     this.channel[i].voicevolume=0;
+    this.channel[i].finalvolume=0;
 
     this.channel[i].semitone=12;
     this.channel[i].vibratospeed=0
@@ -238,7 +239,7 @@ Fasttracker.prototype.initialize = function()
     this.channel[i].trigrampfrom=0.0;
     this.channel[i].currentsample=0.0;
     this.channel[i].lastsample=0.0;
-    this.channel[i].oldvoicevolume=0.0;
+    this.channel[i].oldfinalvolume=0.0;
   }
 }
 
@@ -708,7 +709,7 @@ Fasttracker.prototype.process_tick = function(mod) {
     var pp=mod.row*5*mod.channels + ch*5;
 
     // save old volume if ramping is needed
-    mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
+    mod.channel[ch].oldfinalvolume=mod.channel[ch].finalvolume;
 
     if (mod.flags&2) { // new row on this tick?
       mod.channel[ch].command=mod.pattern[p][pp+3];
@@ -738,12 +739,6 @@ Fasttracker.prototype.process_tick = function(mod) {
       } else {
         mod.effects_t1[mod.channel[ch].command](mod, ch);
       }
-    }
-
-    // setup volramp if voice volume changed
-    if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
-      mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
-      mod.channel[ch].volramp=0.0;
     }
 
     // recalc sample speed if voiceperiod has changed
@@ -804,6 +799,15 @@ Fasttracker.prototype.process_tick = function(mod) {
         mod.channel[ch].panenvpos=mod.instrument[i].panenvlen;
 
       if (mod.channel[ch].panenvpos>324) mod.channel[ch].panenvpos=324;
+    }
+    
+    // calc final volume for channel
+    mod.channel[ch].finalvolume=mod.channel[ch].voicevolume * mod.instrument[i].volenv[mod.channel[ch].volenvpos] * mod.channel[ch].fadeoutpos/65536.0;
+
+    // setup volramp if voice volume changed
+    if (mod.channel[ch].oldfinalvolume!=mod.channel[ch].finalvolume) {
+      mod.channel[ch].volrampfrom=mod.channel[ch].oldfinalvolume;
+      mod.channel[ch].volramp=0.0;
     }
     
     // clear channel flags
@@ -869,15 +873,11 @@ Fasttracker.prototype.mix = function(mod, bufs, buflen) {
           mod.channel[ch].currentsample=fl;
 
           // ramp volume changes over 64 samples to avoid clicks
-          fr=fl*(mod.channel[ch].voicevolume/64.0);
+          fr=fl*(mod.channel[ch].finalvolume/64.0);
           f=mod.channel[ch].volramp;
           fl=f*fr + (1.0-f)*(fl*(mod.channel[ch].volrampfrom/64.0));
           f+=(1.0/64.0);
           mod.channel[ch].volramp=Math.min(1.0, f);
-
-          // if envelope is not enabled, volenv is always 1.0 and fadeout 65535
-          fl*=mod.instrument[i].volenv[mod.channel[ch].volenvpos];
-          fl*=mod.channel[ch].fadeoutpos/65536.0;
 
           // pan samples, if envelope is disabled panvenv is always 0.5
           f=mod.instrument[i].panenv[mod.channel[ch].panenvpos];

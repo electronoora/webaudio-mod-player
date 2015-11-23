@@ -453,7 +453,7 @@ Modplayer.prototype.mix = function(ape) {
       
       bufs[0][s]=outp[0];
       bufs[1][s]=outp[1];
-   }
+    }
 
     mod.row=mod.player.row;
     mod.position=mod.player.position;
@@ -469,9 +469,10 @@ Modplayer.prototype.mix = function(ape) {
 
     if (mod.delayfirst>0) mod.delayfirst--;
     mod.delayload=0;
+    
+    // update this.chvu from player channel vu
+    for(i=0;i<mod.player.channels;i++) mod.chvu[i]=mod.chvu[i]*0.25 + mod.player.chvu[i]*0.75;    
   }
 
-  // update this.chvu from player channel vu
-  for(i=0;i<mod.player.channels;i++)
-    mod.chvu[i]=mod.chvu[i]*0.25 + mod.player.chvu[i]*0.75;
+
 }
