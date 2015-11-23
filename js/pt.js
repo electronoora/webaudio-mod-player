@@ -22,7 +22,7 @@ function Protracker()
 
   this.filter=false;
 
-  this.separation=1;
+  this.mixval=8.0;
 
   this.syncqueue=[];
 
@@ -362,14 +362,11 @@ Protracker.prototype.advance = function(mod) {
 
 
 // mix an audio buffer with data
-Protracker.prototype.mix = function(ape, mod) {
+Protracker.prototype.mix = function(mod, bufs, buflen) {
   var f;
   var p, pp, n, nn;
 
-  outp=new Float32Array(2);
-
-  var bufs=new Array(ape.outputBuffer.getChannelData(0), ape.outputBuffer.getChannelData(1));
-  var buflen=ape.outputBuffer.length;
+  var outp=new Float32Array(2);
   for(var s=0;s<buflen;s++)
   {
     outp[0]=0.0;
@@ -478,22 +475,6 @@ Protracker.prototype.mix = function(ape, mod) {
       mod.offset++;
       mod.flags&=0x70;
     }
-
-    // a more headphone-friendly stereo separation (aka. betterpaula)
-    if (mod.separation) {
-      t=outp[0];
-      if (mod.separation==2) {
-        outp[0]=outp[0]*0.5 + outp[1]*0.5;
-        outp[1]=outp[1]*0.5 + t*0.5;
-      } else {
-        outp[0]=outp[0]*0.65 + outp[1]*0.35;
-        outp[1]=outp[1]*0.65 + t*0.35;
-      }
-    }
-
-    // scale down to -1..1 range and update left/right vu
-    outp[0]*=(1.0/mod.channels);
-    outp[1]*=(1.0/mod.channels);
 
     // done - store to output buffer
     bufs[0][s]=outp[0];

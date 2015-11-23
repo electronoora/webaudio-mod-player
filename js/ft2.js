@@ -31,7 +31,6 @@ function Fasttracker()
   this.paused=false;
   this.repeat=false;
 
-  this.separation=0;
   this.filter=false;
 
   this.syncqueue=[];
@@ -693,11 +692,132 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
 
 
 
-// mix an audio buffer with data
-Fasttracker.prototype.mix = function(ape, mod) {
+// advance player and all channels by a tick
+Fasttracker.prototype.process_tick = function(mod) {
+  var ch;
+
+  // advance global player state by a tick  
+  mod.advance(mod);
+
+  // advance all channels by a tick  
+  for(ch=0;ch<mod.channels;ch++) {
+  
+    // calculate playback position
+    var p=mod.patterntable[mod.position];
+    var pp=mod.row*5*mod.channels + ch*5;
+
+    //if (mod.flags&1)
+    mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
+
+    if (mod.flags&2) { // new row on this tick?
+      mod.channel[ch].command=mod.pattern[p][pp+3];
+      mod.channel[ch].data=mod.pattern[p][pp+4];
+      if (!(mod.channel[ch].command==0x0e && (mod.channel[ch].data&0xf0)==0xd0)) { // note delay?
+        mod.process_note(mod, p, ch);
+      }
+    }
+    i=mod.channel[ch].instrument;
+    si=mod.channel[ch].sampleindex;
+
+    // kill empty instruments
+    if (mod.channel[ch].noteon && !mod.instrument[i].samples) {
+      mod.channel[ch].noteon=0;
+    }
+
+    // effects
+    var v=mod.pattern[p][pp+2];
+    if (v>=0x50 && v<0xf0) {
+      if (!mod.tick) mod.voleffects_t0[(v>>4)-5](mod, ch, v&0x0f);
+       else mod.voleffects_t1[(v>>4)-5](mod, ch, v&0x0f);
+    }
+    if (mod.channel[ch].command < 36) {
+      if (!mod.tick) {
+        // process only on tick 0
+        mod.effects_t0[mod.channel[ch].command](mod, ch);
+      } else {
+        mod.effects_t1[mod.channel[ch].command](mod, ch);
+      }
+    }
+
+    // setup volramp if voice volume changed
+    if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
+      mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
+      mod.channel[ch].volramp=0.0;
+    }
+
+    // recalc sample speed if voiceperiod has changed
+    if ((mod.channel[ch].flags&1 || mod.flags&2) && mod.channel[ch].voiceperiod)
+    {
+      var f;
+      if (mod.amigaperiods) {
+        f=8363.0 * 1712.0/mod.channel[ch].voiceperiod;
+      } else {
+        f=8363.0 * Math.pow(2.0, (6*12*16*4 - mod.channel[ch].voiceperiod) / (12*16*4));
+      }
+      mod.channel[ch].samplespeed=f/mod.samplerate;
+    }
+
+    // advance vibrato on each new tick
+    mod.channel[ch].vibratopos+=mod.channel[ch].vibratospeed;
+    mod.channel[ch].vibratopos&=0x3f;
+
+    // advance volume envelope, if enabled (also fadeout)
+    if (mod.instrument[i].voltype&1) {
+      mod.channel[ch].volenvpos++;
+
+      if (mod.channel[ch].noteon &&
+          (mod.instrument[i].voltype&2) &&
+          mod.channel[ch].volenvpos > mod.instrument[i].volsustain)
+        mod.channel[ch].volenvpos=mod.instrument[i].volsustain;
+
+      if ((mod.instrument[i].voltype&4) &&
+          mod.channel[ch].volenvpos > mod.instrument[i].volloopend)
+        mod.channel[ch].volenvpos=mod.instrument[i].volloopstart;
+
+      if (mod.channel[ch].volenvpos > mod.instrument[i].volenvlen)
+        mod.channel[ch].volenvpos=mod.instrument[i].volenvlen;
+
+      if (mod.channel[ch].volenvpos>324) mod.channel[ch].volenvpos=324;
+
+      // fadeout if note is off
+      if (!mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) {
+        mod.channel[ch].fadeoutpos-=mod.instrument[i].volfadeout;
+        if (mod.channel[ch].fadeoutpos<0) mod.channel[ch].fadeoutpos=0;
+      }
+    }
+
+    // advance pan envelope, if enabled
+    if (mod.instrument[i].pantype&1) {
+      mod.channel[ch].panenvpos++;
+
+      if (mod.channel[ch].noteon &&
+          mod.instrument[i].pantype&2 &&
+          mod.channel[ch].panenvpos > mod.instrument[i].pansustain)
+        mod.channel[ch].panenvpos=mod.instrument[i].pansustain;
+
+      if (mod.instrument[i].pantype&4 &&
+          mod.channel[ch].panenvpos > mod.instrument[i].panloopend)
+        mod.channel[ch].panenvpos=mod.instrument[i].panloopstart;
+
+      if (mod.channel[ch].panenvpos > mod.instrument[i].panenvlen)
+        mod.channel[ch].panenvpos=mod.instrument[i].panenvlen;
+
+      if (mod.channel[ch].panenvpos>324) mod.channel[ch].panenvpos=324;
+    }
+    
+    // clear channel flags
+    mod.channel[ch].flags=0;
+  }
+
+  // clear global flags after all channels are processed
+  mod.flags&=0x70;
+}
+
+
+
+// mix a buffer of audio for an audio processing event
+Fasttracker.prototype.mix = function(mod, bufs, buflen) {
   var outp=new Float32Array(2);
-  var bufs=new Array(ape.outputBuffer.getChannelData(0), ape.outputBuffer.getChannelData(1));
-  var buflen=ape.outputBuffer.length;
 
   // return a buffer of silence if not playing
   if (mod.paused || mod.endofsong || !mod.playing) {
@@ -718,122 +838,7 @@ Fasttracker.prototype.mix = function(ape, mod) {
     outp[1]=0.0;
     
     // if STT has run out, step player forward by tick
-    if (mod.stt<=0) {
-      
-      mod.advance(mod);
-      
-      for(ch=0;ch<mod.channels;ch++) {
-      
-        // calculate playback position
-        var p=mod.patterntable[mod.position];
-        var pp=mod.row*5*mod.channels + ch*5;
-
-        //if (mod.flags&1)
-        mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
-
-        if (mod.flags&2) { // new row on this tick?
-          mod.channel[ch].command=mod.pattern[p][pp+3];
-          mod.channel[ch].data=mod.pattern[p][pp+4];
-          if (!(mod.channel[ch].command==0x0e && (mod.channel[ch].data&0xf0)==0xd0)) { // note delay?
-            mod.process_note(mod, p, ch);
-          }
-        }
-        i=mod.channel[ch].instrument;
-        si=mod.channel[ch].sampleindex;
-
-        // kill empty instruments
-        if (mod.channel[ch].noteon && !mod.instrument[i].samples) {
-          mod.channel[ch].noteon=0;
-        }
-
-        // effects
-        var v=mod.pattern[p][pp+2];
-        if (v>=0x50 && v<0xf0) {
-          if (!mod.tick) mod.voleffects_t0[(v>>4)-5](mod, ch, v&0x0f);
-           else mod.voleffects_t1[(v>>4)-5](mod, ch, v&0x0f);
-        }
-        if (mod.channel[ch].command < 36) {
-          if (!mod.tick) {
-            // process only on tick 0
-            mod.effects_t0[mod.channel[ch].command](mod, ch);
-          } else {
-            mod.effects_t1[mod.channel[ch].command](mod, ch);
-          }
-        }
-
-        // setup volramp if voice volume changed
-        if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
-          mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
-          mod.channel[ch].volramp=0.0;
-        }
-
-        // recalc sample speed if voiceperiod has changed
-        if ((mod.channel[ch].flags&1 || mod.flags&2) && mod.channel[ch].voiceperiod)
-        {
-          var f;
-          if (mod.amigaperiods) {
-            f=8363.0 * 1712.0/mod.channel[ch].voiceperiod;
-          } else {
-            f=8363.0 * Math.pow(2.0, (6*12*16*4 - mod.channel[ch].voiceperiod) / (12*16*4));
-          }
-          mod.channel[ch].samplespeed=f/mod.samplerate;
-        }
-
-        // advance vibrato on each new tick
-        mod.channel[ch].vibratopos+=mod.channel[ch].vibratospeed;
-        mod.channel[ch].vibratopos&=0x3f;
-
-        // advance volume envelope, if enabled (also fadeout)
-        if (mod.instrument[i].voltype&1) {
-          mod.channel[ch].volenvpos++;
-
-          if (mod.channel[ch].noteon &&
-              (mod.instrument[i].voltype&2) &&
-              mod.channel[ch].volenvpos > mod.instrument[i].volsustain)
-            mod.channel[ch].volenvpos=mod.instrument[i].volsustain;
-
-          if ((mod.instrument[i].voltype&4) &&
-              mod.channel[ch].volenvpos > mod.instrument[i].volloopend)
-            mod.channel[ch].volenvpos=mod.instrument[i].volloopstart;
-
-          if (mod.channel[ch].volenvpos > mod.instrument[i].volenvlen)
-            mod.channel[ch].volenvpos=mod.instrument[i].volenvlen;
-
-          if (mod.channel[ch].volenvpos>324) mod.channel[ch].volenvpos=324;
-
-          // fadeout if note is off
-          if (!mod.channel[ch].noteon && mod.channel[ch].fadeoutpos) {
-            mod.channel[ch].fadeoutpos-=mod.instrument[i].volfadeout;
-            if (mod.channel[ch].fadeoutpos<0) mod.channel[ch].fadeoutpos=0;
-          }
-        }
-
-        // advance pan envelope, if enabled
-        if (mod.instrument[i].pantype&1) {
-          mod.channel[ch].panenvpos++;
-
-          if (mod.channel[ch].noteon &&
-              mod.instrument[i].pantype&2 &&
-              mod.channel[ch].panenvpos > mod.instrument[i].pansustain)
-            mod.channel[ch].panenvpos=mod.instrument[i].pansustain;
-
-          if (mod.instrument[i].pantype&4 &&
-              mod.channel[ch].panenvpos > mod.instrument[i].panloopend)
-            mod.channel[ch].panenvpos=mod.instrument[i].panloopstart;
-
-          if (mod.channel[ch].panenvpos > mod.instrument[i].panenvlen)
-            mod.channel[ch].panenvpos=mod.instrument[i].panenvlen;
-
-          if (mod.channel[ch].panenvpos>324) mod.channel[ch].panenvpos=324;
-        }
-        
-        // clear channel flags
-        mod.channel[ch].flags=0;
-      }
-
-      // clear global flags after all channels are processed
-      mod.flags&=0x70;
-    } // done processing new tick
+    if (mod.stt<=0) mod.process_tick(mod);
 
     // mix channels
     for(ch=0;ch<mod.channels;ch++)
@@ -854,7 +859,7 @@ Fasttracker.prototype.mix = function(ape, mod) {
           var f=Math.floor(mod.channel[ch].samplepos);
           fs=mod.instrument[i].sample[si].data[f];
           f=mod.channel[ch].samplepos - f;
-          f= (mod.channel[ch].playdir<0) ? f=1.0-f : f;
+          f=(mod.channel[ch].playdir<0) ? (1.0-f) : f;
           fl=f*fs + (1.0-f)*fl;
 
           // smooth out discontinuities from retrig and sample offset
@@ -928,26 +933,10 @@ Fasttracker.prototype.mix = function(ape, mod) {
       mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(fl+fr));
     }
 
-    // a more headphone-friendly stereo separation
-    if (mod.separation) {
-      t=outp[0];
-      if (mod.separation==2) { // mono
-        outp[0]=outp[0]*0.5 + outp[1]*0.5;
-        outp[1]=outp[1]*0.5 + t*0.5;
-      } else {
-        outp[0]=outp[0]*0.65 + outp[1]*0.35;
-        outp[1]=outp[1]*0.65 + t*0.35;
-      }
-    }
-
-    // scale down, soft clip and update left/right vu meters
-    t=(mod.volume/64.0);
-    outp[0]*=t; outp[0]/=mod.mixval; outp[0]=0.5*(Math.abs(outp[0]+0.975)-Math.abs(outp[0]-0.975));
-    outp[1]*=t; outp[1]/=mod.mixval; outp[1]=0.5*(Math.abs(outp[1]+0.975)-Math.abs(outp[1]-0.975));
-
     // done - store to output buffer
-    bufs[0][s]=outp[0];
-    bufs[1][s]=outp[1];
+    t=mod.volume/64.0;
+    bufs[0][s]=outp[0]*t;
+    bufs[1][s]=outp[1]*t
     mod.stt--;
   }
 }

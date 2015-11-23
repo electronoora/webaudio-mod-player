@@ -20,7 +20,6 @@ function Screamtracker()
   this.paused=false;
   this.repeat=false;
 
-  this.separation=0;
   this.filter=false;
 
   this.syncqueue=[];
@@ -512,14 +511,11 @@ Screamtracker.prototype.process_note = function(mod, p, ch) {
 
 
 // mix an audio buffer with data
-Screamtracker.prototype.mix = function(ape, mod) {
+Screamtracker.prototype.mix = function(mod, bufs, buflen) {
   var f, fl, fr, fs, pv;
   var p, pp, n, nn;
 
-  outp=new Float32Array(2);
-
-  var bufs=new Array(ape.outputBuffer.getChannelData(0), ape.outputBuffer.getChannelData(1));
-  var buflen=ape.outputBuffer.length;
+  var outp=new Float32Array(2);
   for(var s=0;s<buflen;s++)
   {
     outp[0]=0.0;
@@ -638,26 +634,10 @@ Screamtracker.prototype.mix = function(ape, mod) {
       mod.flags&=0x70;
     }
 
-    // a more headphone-friendly stereo separation
-    if (mod.separation) {
-      t=outp[0];
-      if (mod.separation==2) { // mono
-        outp[0]=outp[0]*0.5 + outp[1]*0.5;
-        outp[1]=outp[1]*0.5 + t*0.5;
-      } else {
-        outp[0]=outp[0]*0.65 + outp[1]*0.35;
-        outp[1]=outp[1]*0.65 + t*0.35;
-      }
-    }
-
-    // scale down, soft clip and update left/right vu meters
-    t=(mod.volume/64.0);
-    outp[0]*=t; outp[0]/=mod.mixval; outp[0]=0.5*(Math.abs(outp[0]+0.975)-Math.abs(outp[0]-0.975));
-    outp[1]*=t; outp[1]/=mod.mixval; outp[1]=0.5*(Math.abs(outp[1]+0.975)-Math.abs(outp[1]-0.975));
-
     // done - store to output buffer
-    bufs[0][s]=outp[0];
-    bufs[1][s]=outp[1];
+    t=mod.volume/64.0;
+    bufs[0][s]=outp[0]*t;
+    bufs[1][s]=outp[1]*t;
   }
 }
 

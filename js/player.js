@@ -17,6 +17,7 @@ function Modplayer()
   this.repeat=false;
 
   this.separation=1;
+  this.mixval=8.0;
 
   this.amiga500=false;
 
@@ -101,6 +102,7 @@ Modplayer.prototype.load = function(url)
       asset.channels=asset.player.channels;
       asset.patterns=asset.player.patterns;
       asset.filter=asset.player.filter;
+      asset.mixval=asset.player.mixval; // usually 8.0, though
       asset.samplenames=new Array(32)
       for(i=0;i<32;i++) asset.samplenames[i]="";
       if (asset.format=='xm' || asset.format=='it') {
@@ -422,9 +424,36 @@ Modplayer.prototype.mix = function(ape) {
 
   if (mod.player && mod.delayfirst==0) {
     mod.player.repeat=mod.repeat;
-    mod.player.separation=mod.separation;
 
-    mod.player.mix(ape, mod.player);
+    var bufs=new Array(ape.outputBuffer.getChannelData(0), ape.outputBuffer.getChannelData(1));
+    var buflen=ape.outputBuffer.length;
+    mod.player.mix(mod.player, bufs, buflen);
+
+    // apply stereo separation and soft clipping
+    var outp=new Float32Array(2);
+    for(var s=0;s<buflen;s++) {
+      outp[0]=bufs[0][s];
+      outp[1]=bufs[1][s];
+    
+      // a more headphone-friendly stereo separation
+      if (mod.separation) {
+        t=outp[0];
+        if (mod.separation==2) { // mono
+          outp[0]=outp[0]*0.5 + outp[1]*0.5;
+          outp[1]=outp[1]*0.5 + t*0.5;
+        } else { // narrow stereo
+          outp[0]=outp[0]*0.65 + outp[1]*0.35;
+          outp[1]=outp[1]*0.65 + t*0.35;
+        }
+      }
+
+      // scale down and soft clip
+      outp[0]/=mod.mixval; outp[0]=0.5*(Math.abs(outp[0]+0.975)-Math.abs(outp[0]-0.975));
+      outp[1]/=mod.mixval; outp[1]=0.5*(Math.abs(outp[1]+0.975)-Math.abs(outp[1]-0.975));
+      
+      bufs[0][s]=outp[0];
+      bufs[1][s]=outp[1];
+   }
 
     mod.row=mod.player.row;
     mod.position=mod.player.position;
