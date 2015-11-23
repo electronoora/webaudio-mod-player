@@ -4,6 +4,7 @@
 
   todo:
   - sample sequences in te-2rx.xm and little_man.xm play off sync
+  - weird pattern data at pos 0x33 and 0x35 of aliensex.xm
   - fix clicks - ramping isn's always working as intended
   - implement missing volume column effect commands
   - implement missing ft2 commands
@@ -614,6 +615,7 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
       s=mod.instrument[i-1].samplemap[mod.channel[ch].note];
       mod.channel[ch].sampleindex=s;
       mod.channel[ch].volume=mod.instrument[i-1].sample[s].volume;
+      mod.channel[ch].playdir=1; // fixes crash in respirator.xm pos 0x12
       
       // set pan from sample
       mod.pan_r[ch]=mod.instrument[i-1].sample[s].panning/255.0;
@@ -694,19 +696,18 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
 
 // advance player and all channels by a tick
 Fasttracker.prototype.process_tick = function(mod) {
-  var ch;
 
   // advance global player state by a tick  
   mod.advance(mod);
 
   // advance all channels by a tick  
-  for(ch=0;ch<mod.channels;ch++) {
+  for(var ch=0;ch<mod.channels;ch++) {
   
     // calculate playback position
     var p=mod.patterntable[mod.position];
     var pp=mod.row*5*mod.channels + ch*5;
 
-    //if (mod.flags&1)
+    // save old volume if ramping is needed
     mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
 
     if (mod.flags&2) { // new row on this tick?
@@ -832,8 +833,6 @@ Fasttracker.prototype.mix = function(mod, bufs, buflen) {
   // fill audiobuffer
   for(var s=0;s<buflen;s++)
   {
-    var ch, i, si;
-    
     outp[0]=0.0;
     outp[1]=0.0;
     
@@ -841,11 +840,11 @@ Fasttracker.prototype.mix = function(mod, bufs, buflen) {
     if (mod.stt<=0) mod.process_tick(mod);
 
     // mix channels
-    for(ch=0;ch<mod.channels;ch++)
+    for(var ch=0;ch<mod.channels;ch++)
     {
       var fl=0.0, fr=0.0, fs=0.0;
-      i=mod.channel[ch].instrument;
-      si=mod.channel[ch].sampleindex;
+      var i=mod.channel[ch].instrument;
+      var si=mod.channel[ch].sampleindex;
       
       // add channel output to left/right master outputs
       if (mod.channel[ch].noteon ||
