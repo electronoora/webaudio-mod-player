@@ -17,7 +17,7 @@ a.inactive, a.inactive:visited, a.inactive:hover { color: #445; }
 
 .tdalink { color: #113 !important; }
 .tdalink:hover { color: #558 !important; }
-.tdalink:visited { color:#113 !important; }
+.tdalink:visited { color:#113 !important; }
 
 select, input {
   background-color: #000; color: #8f8;
@@ -28,8 +28,8 @@ select, input {
   outline: none; font-style: normal; font-weight: normal;
   line-height: 16px;
 }
-optgroup { font-size: 16px; color: #88f; font-style: normal; font-weight: normal; line-height: 16px; }
-option { color: #8f8; height: 16px; line-height: 16px; padding: 0; }
+optgroup { font-family: Topaz; font-size: 16px; color: #88f; font-style: normal; font-weight: normal; line-height: 16px; }
+option { font-family: Topaz; color: #8f8; font-size: 16px; height: 16px; line-height: 16px; padding: 0; }
 .odd { background-color: #181818; }
 .even { background-color: #222222; }
 
