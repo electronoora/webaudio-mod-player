@@ -160,15 +160,15 @@ Screamtracker.prototype.initialize = function()
 {
   this.syncqueue=[];
 
-  this.tick=0;
+  this.tick=-1;
   this.position=0;
   this.row=0;
-  this.offset=0;
   this.flags=0;
 
   this.volume=this.globalVol;
   this.speed=this.initSpeed;
   this.bpm=this.initBPM;
+  this.stt=0;
   this.breakrow=0;
   this.patternjump=0;
   this.patterndelay=0;
@@ -404,10 +404,13 @@ Screamtracker.prototype.parse = function(buffer)
 
 // advance player
 Screamtracker.prototype.advance = function(mod) {
-  var spd=(((mod.samplerate*60)/mod.bpm)/4)/6;
+  mod.stt=(((mod.samplerate*60)/mod.bpm)/4)/6; // samples to tick
 
   // advance player
-  if (mod.offset>spd) { mod.tick++; mod.offset=0; mod.flags|=1; }
+  mod.tick++;
+  mod.flags|=1;
+
+  // new row on this tick?
   if (mod.tick>=mod.speed) {
     if (mod.patterndelay) { // delay pattern
       if (mod.tick < ((mod.patternwait+1)*mod.speed)) {
@@ -439,12 +442,16 @@ Screamtracker.prototype.advance = function(mod) {
       }
     }
   }
+
+  // step to new pattern?
   if (mod.row>=64) {
     mod.position++;
     mod.row=0;
     mod.flags|=4;
     while (mod.patterntable[mod.position]==254) mod.position++; // skip markers
   }
+
+  // end of song?
   if (mod.position>=mod.songlen || mod.patterntable[mod.position]==255) {
     if (mod.repeat) {
       mod.position=0;
@@ -510,134 +517,146 @@ Screamtracker.prototype.process_note = function(mod, p, ch) {
 
 
 
+// advance player and all channels by a tick
+Screamtracker.prototype.process_tick = function(mod) {
+
+  // advance global player state by a tick
+  mod.advance(mod);
+
+  // advance all channels
+  for(var ch=0;ch<mod.channels;ch++) {
+
+    // calculate playback position
+    var p=mod.patterntable[mod.position];
+    var pp=mod.row*5*mod.channels + ch*5;
+
+    mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
+
+    if (mod.flags&2) { // new row
+      mod.channel[ch].command=mod.pattern[p][pp+3];
+      mod.channel[ch].data=mod.pattern[p][pp+4];
+      if (!(mod.channel[ch].command==0x13 && (mod.channel[ch].data&0xf0)==0xd0)) { // note delay?
+        mod.process_note(mod, p, ch);
+      }
+    }
+
+    // kill empty samples
+    if (!mod.sample[mod.channel[ch].sample].length) mod.channel[ch].noteon=0;
+
+    // run effects on each new tick
+    if (mod.channel[ch].command < 27) {
+      if (!mod.tick) {
+        // process only on tick 0 effects
+        mod.effects_t0[mod.channel[ch].command](mod, ch);
+      } else {
+        mod.effects_t1[mod.channel[ch].command](mod, ch);
+      }
+    }
+
+    // advance vibrato on each new tick
+    mod.channel[ch].vibratopos+=mod.channel[ch].vibratospeed*2
+    mod.channel[ch].vibratopos&=0xff;
+
+    if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
+      mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
+      mod.channel[ch].volramp=0.0;
+    }
+
+    // recalc sample speed if voiceperiod has changed
+    if ((mod.channel[ch].flags&1 || mod.flags&2) && mod.channel[ch].voiceperiod)
+      mod.channel[ch].samplespeed=(14317056.0/mod.channel[ch].voiceperiod) / mod.samplerate;
+
+    // clear channel flags
+    mod.channel[ch].flags=0;
+  }
+
+  // clear global flags after all channels are processed
+  mod.flags&=0x70;
+}
+
+
+
 // mix an audio buffer with data
 Screamtracker.prototype.mix = function(mod, bufs, buflen) {
-  var f, fl, fr, fs, pv;
-  var p, pp, n, nn;
-
   var outp=new Float32Array(2);
+
+  // return a buffer of silence if not playing
+  if (mod.paused || mod.endofsong || !mod.playing) {
+    for(var s=0;s<buflen;s++) {
+      bufs[0][s]=0.0;
+      bufs[1][s]=0.0;
+      for(var ch=0;ch<mod.chvu.length;ch++) mod.chvu[ch]=0.0;
+    }
+    return;
+  }
+
+  // fill audiobuffer
   for(var s=0;s<buflen;s++)
   {
     outp[0]=0.0;
     outp[1]=0.0;
 
-    if (!mod.paused && !mod.endofsong && mod.playing)
+    // if STT has run out, step player forward by tick
+    if (mod.stt<=0) mod.process_tick(mod);
+
+    // mix channels
+    for(var ch=0;ch<mod.channels;ch++)
     {
-      mod.advance(mod);
+      var fl=0.0; fr=0.0; fs=0.0;
+      var si=mod.channel[ch].sample;
 
-      for(var ch=0;ch<mod.channels;ch++)
-      {
-        mod.chvu[ch]=0.0;
+      // add channel output to left/right master outputs
+      mod.channel[ch].currentsample=0.0; // assume note is off
+      if (mod.channel[ch].noteon || (!mod.channel[ch].noteon && mod.channel[ch].volramp<1.0)) {
+        if (mod.sample[si].length > mod.channel[ch].samplepos) {
+          fl=mod.channel[ch].lastsample;
 
-        // calculate playback position
-        p=mod.patterntable[mod.position];
-        pp=mod.row*5*mod.channels + ch*5;
+          // interpolate towards current sample
+          var f=mod.channel[ch].samplepos-Math.floor(mod.channel[ch].samplepos);
+          fs=mod.sample[si].data[Math.floor(mod.channel[ch].samplepos)];
+          fl=f*fs + (1.0-f)*fl;
 
-        if (mod.flags&3) mod.channel[ch].oldvoicevolume=mod.channel[ch].voicevolume;
+          // smooth out discontinuities from retrig and sample offset
+          f=mod.channel[ch].trigramp;
+          fl=f*fl + (1.0-f)*mod.channel[ch].trigrampfrom;
+          f+=1.0/128.0;
+          mod.channel[ch].trigramp=Math.min(1.0, f);
+          mod.channel[ch].currentsample=fl;
 
-        if (mod.flags&2) { // new row
-          mod.channel[ch].command=mod.pattern[p][pp+3];
-          mod.channel[ch].data=mod.pattern[p][pp+4];
-          if (!(mod.channel[ch].command==0x13 && (mod.channel[ch].data&0xf0)==0xd0)) { // note delay?
-            mod.process_note(mod, p, ch);
-          }
+          // ramp volume changes over 64 samples to avoid clicks
+          fr=fl*(mod.channel[ch].voicevolume/64.0);
+          f=mod.channel[ch].volramp;
+          fl=f*fr + (1.0-f)*(fl*(mod.channel[ch].volrampfrom/64.0));
+          f+=(1.0/64.0);
+          mod.channel[ch].volramp=Math.min(1.0, f);
+
+          // pan samples
+          fr=fl*mod.pan_r[ch];
+          fl*=mod.pan_l[ch];
         }
+        outp[0]+=fl;
+        outp[1]+=fr;
 
-        // kill empty samples
-        if (!mod.sample[mod.channel[ch].sample].length) mod.channel[ch].noteon=0;
+        var oldpos=mod.channel[ch].samplepos;
+        mod.channel[ch].samplepos+=mod.channel[ch].samplespeed;
+        if (Math.floor(mod.channel[ch].samplepos) > Math.floor(oldpos)) mod.channel[ch].lastsample=fs;
 
-        // run effects on each new tick
-        if (mod.flags&1) {
-          if (mod.channel[ch].command < 27) {
-            if (!mod.tick) {
-              // process only on tick 0 effects
-              mod.effects_t0[mod.channel[ch].command](mod, ch);
-            } else {
-              mod.effects_t1[mod.channel[ch].command](mod, ch);
-            }
+        // loop or stop sample?
+        if (mod.sample[mod.channel[ch].sample].loop) {
+          if (mod.channel[ch].samplepos >= mod.sample[mod.channel[ch].sample].loopend) {
+            mod.channel[ch].samplepos-=mod.sample[mod.channel[ch].sample].looplength;
+            mod.channel[ch].lastsample=mod.channel[ch].currentsample;
           }
-
-          // advance vibrato on each new tick
-          mod.channel[ch].vibratopos+=mod.channel[ch].vibratospeed*2
-          mod.channel[ch].vibratopos&=0xff;
-        }
-
-        if (mod.flags&3) {
-          if (mod.channel[ch].oldvoicevolume!=mod.channel[ch].voicevolume) {
-            mod.channel[ch].volrampfrom=mod.channel[ch].oldvoicevolume;
-            mod.channel[ch].volramp=0.0;
-          }
-        }
-
-        // recalc sample speed if voiceperiod has changed
-        if ((mod.channel[ch].flags&1 || mod.flags&2) && mod.channel[ch].voiceperiod)
-          mod.channel[ch].samplespeed=(14317056.0/mod.channel[ch].voiceperiod) / mod.samplerate;
-
-        // add channel output to left/right master outputs
-        fl=0.0; fr=0.0; fs=0.0;
-        if (mod.channel[ch].noteon || (!mod.channel[ch].noteon && mod.channel[ch].volramp<1.0)) {
-          if (mod.sample[mod.channel[ch].sample].length > mod.channel[ch].samplepos) {
-            fl=mod.channel[ch].lastsample;
-
-            // interpolate towards current sample
-            f=mod.channel[ch].samplepos-Math.floor(mod.channel[ch].samplepos);
-            fs=mod.sample[mod.channel[ch].sample].data[Math.floor(mod.channel[ch].samplepos)];
-            fl=f*fs + (1.0-f)*fl;
-
-            // smooth out discontinuities from retrig and sample offset
-            if (mod.channel[ch].trigramp<1.0) {
-              fl=mod.channel[ch].trigramp*fl + (1.0-mod.channel[ch].trigramp)*mod.channel[ch].trigrampfrom;
-              mod.channel[ch].trigramp+=1.0/128.0;
-            }
-            mod.channel[ch].currentsample=fl;
-
-            // ramp volume changes over 64 samples to avoid clicks
-            fr=fl*(mod.channel[ch].voicevolume/64.0);
-            if (mod.channel[ch].volramp<1.0) {
-              fl=mod.channel[ch].volramp*fr + (1.0-mod.channel[ch].volramp)*(fl*(mod.channel[ch].volrampfrom/64.0));
-              mod.channel[ch].volramp+=(1.0/64.0);
-            } else {
-              fl=fr;
-            }
-
-            // pan samples
-            fr=fl*mod.pan_r[ch];
-            fl*=mod.pan_l[ch];
-          }
-          outp[0]+=fl;
-          outp[1]+=fr;
-
-          var oldpos=mod.channel[ch].samplepos;
-          mod.channel[ch].samplepos+=mod.channel[ch].samplespeed;
-          if (Math.floor(mod.channel[ch].samplepos) > Math.floor(oldpos)) mod.channel[ch].lastsample=fs;
-
-          // loop or stop sample?
-          if (mod.sample[mod.channel[ch].sample].loop) {
-            if (mod.channel[ch].samplepos >= mod.sample[mod.channel[ch].sample].loopend) {
-              mod.channel[ch].samplepos-=mod.sample[mod.channel[ch].sample].looplength;
-              mod.channel[ch].lastsample=mod.channel[ch].currentsample;
-            }
-          } else {
-            if (mod.channel[ch].samplepos >= mod.sample[mod.channel[ch].sample].length) {
-              mod.channel[ch].noteon=0;
-            }
-          }
-        } else {
-          mod.channel[ch].currentsample=0.0;
-        }
-        mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(fl+fr));
-
-        // clear channel flags
-        mod.channel[ch].flags=0;
+        } else if (mod.channel[ch].samplepos >= mod.sample[mod.channel[ch].sample].length) mod.channel[ch].noteon=0;
       }
-      mod.offset++;
-      mod.flags&=0x70;
+      mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(fl+fr));
     }
 
     // done - store to output buffer
     t=mod.volume/64.0;
     bufs[0][s]=outp[0]*t;
     bufs[1][s]=outp[1]*t;
+    mod.stt--;
   }
 }
 
