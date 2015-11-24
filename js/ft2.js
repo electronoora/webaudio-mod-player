@@ -287,6 +287,19 @@ Fasttracker.prototype.parse = function(buffer)
   this.pattern=new Array(maxpatt);
   this.patternlen=new Array(maxpatt);
 
+  for(i=0;i<maxpatt;i++) {
+    // initialize the pattern to defaults prior to unpacking
+    this.patternlen[i]=64;
+    this.pattern[i]=new Uint8Array(this.channels*this.patternlen[i]*5);
+    for(row=0;row<this.patternlen[i];row++) for(ch=0;ch<this.channels;ch++) {
+      this.pattern[i][row*this.channels*5 + ch*5 + 0]=255; // note (255=no note)
+      this.pattern[i][row*this.channels*5 + ch*5 + 1]=0; // instrument
+      this.pattern[i][row*this.channels*5 + ch*5 + 2]=255 // volume
+      this.pattern[i][row*this.channels*5 + ch*5 + 3]=255; // command
+      this.pattern[i][row*this.channels*5 + ch*5 + 4]=0; // parameter
+    }
+  }
+
   // load and unpack patterns
   offset+=hdrlen; // initial offset for patterns
   i=0;
