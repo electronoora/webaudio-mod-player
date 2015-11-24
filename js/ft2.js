@@ -4,7 +4,6 @@
 
   todo:
   - sample sequences in te-2rx.xm, little_man.xm and yuki_satellites.xm play off sync
-  - weird pattern data at pos 0x33 and 0x35 of aliensex.xm
   - fix clicks - ramping isn's always working as intended
   - implement missing volume column effect commands
   - implement missing ft2 commands
@@ -284,21 +283,9 @@ Fasttracker.prototype.parse = function(buffer)
   }
   maxpatt++;
 
-  // allocate pattern data and initialize them all
+  // allocate arrays for pattern data
   this.pattern=new Array(maxpatt);
   this.patternlen=new Array(maxpatt);
-  for(i=0;i<maxpatt;i++) {
-    // initialize the pattern to defaults prior to unpacking
-    this.patternlen[i]=64;
-    this.pattern[i]=new Uint8Array(this.channels*this.patternlen[i]*5);
-    for(row=0;row<this.patternlen[i];row++) for(ch=0;ch<this.channels;ch++) {
-      this.pattern[i][row*this.channels*5 + ch*5 + 0]=255; // note (255=no note)
-      this.pattern[i][row*this.channels*5 + ch*5 + 1]=0; // instrument
-      this.pattern[i][row*this.channels*5 + ch*5 + 2]=255 // volume
-      this.pattern[i][row*this.channels*5 + ch*5 + 3]=255; // command
-      this.pattern[i][row*this.channels*5 + ch*5 + 4]=0; // parameter
-    }
-  }
 
   // load and unpack patterns
   offset+=hdrlen; // initial offset for patterns
@@ -306,6 +293,16 @@ Fasttracker.prototype.parse = function(buffer)
   while(i<this.patterns) {
     this.patternlen[i]=le_word(buffer, offset+5);
     this.pattern[i]=new Uint8Array(this.channels*this.patternlen[i]*5);
+    
+    // initialize pattern to defaults prior to unpacking
+    for(k=0;k<(this.patternlen[i]*this.channels);k++) {
+      this.pattern[i][k*5 + 0]=0; // note
+      this.pattern[i][k*5 + 1]=0; // instrument
+      this.pattern[i][k*5 + 2]=0; // volume
+      this.pattern[i][k*5 + 3]=0; // command
+      this.pattern[i][k*5 + 4]=0; // parameter
+    }    
+    
     datalen=le_word(buffer, offset+7);
     offset+=le_dword(buffer, offset); // jump over header
     j=0; k=0;
@@ -326,6 +323,10 @@ Fasttracker.prototype.parse = function(buffer)
         this.pattern[i][k+3]=buffer[offset+j++];
         this.pattern[i][k+4]=buffer[offset+j++];
       }
+      k+=5;
+    }
+      
+    for(k=0;k<(this.patternlen[i]*this.channels*5);k+=5) {      
       // remap note to st3-style, 255=no note, 254=note off
       if (this.pattern[i][k+0]==97) {
         this.pattern[i][k+0]=254;
@@ -341,9 +342,10 @@ Fasttracker.prototype.parse = function(buffer)
       // remap volume column setvol to 0x00..0x40, tone porta to 0x50..0x5f and 0xff for nop
       if (this.pattern[i][k+2]<0x10) { this.pattern[i][k+2]=0xff; }
       else if (this.pattern[i][k+2]>=0x10 && this.pattern[i][k+2]<=0x50) { this.pattern[i][k+2]-=0x10; }
-      else if (this.pattern[i][k+2]>=0xf0) this.pattern[i][k+2]-=0xa0; //(this.pattern[i][k+2]&0x0f)|0x50;
-      k+=5;
+      else if (this.pattern[i][k+2]>=0xf0) this.pattern[i][k+2]-=0xa0;
     }
+    
+    // unpack next pattern
     offset+=j;
     i++;
   }
@@ -534,9 +536,9 @@ Fasttracker.prototype.calcperiod = function(mod, note, finetune) {
     var p1=mod.periodtable[ 8 + (note%12)*8 + ft ];
     var p2=mod.periodtable[ 8 + (note%12)*8 + ft + 1];
     ft=(finetune/16.0) - ft;
-    pv=((1.0-ft)*p1 + ft*p2)*( 16.0/Math.pow(2, Math.floor(note/12)-1) ); // todo: why does octave need -1 to sound correct?
+    pv=((1.0-ft)*p1 + ft*p2)*( 16.0/Math.pow(2, Math.floor(note/12)-1) );
   } else {
-    pv=10*12*16*4 - note*16*4 - finetune/2;
+    pv=7680.0 - note*64.0 - finetune/2;
   }
   return pv;
 }
@@ -545,7 +547,7 @@ Fasttracker.prototype.calcperiod = function(mod, note, finetune) {
 
 // advance player by a tick
 Fasttracker.prototype.advance = function(mod) {
-  mod.stt=Math.floor(mod.samplerate/(mod.bpm*0.4));
+  mod.stt=Math.floor((125.0/mod.bpm) * (1/50.0)*mod.samplerate); // 50Hz
 
   // advance player
   mod.tick++;
@@ -746,9 +748,9 @@ Fasttracker.prototype.process_tick = function(mod) {
     {
       var f;
       if (mod.amigaperiods) {
-        f=8363.0 * 1712.0/mod.channel[ch].voiceperiod;
+        f=8287.137 * 1712.0/mod.channel[ch].voiceperiod;
       } else {
-        f=8363.0 * Math.pow(2.0, (6*12*16*4 - mod.channel[ch].voiceperiod) / (12*16*4));
+        f=8287.137 * Math.pow(2.0, (4608.0 - mod.channel[ch].voiceperiod) / 768.0);
       }
       mod.channel[ch].samplespeed=f/mod.samplerate;
     }
