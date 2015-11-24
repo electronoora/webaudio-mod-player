@@ -471,7 +471,10 @@ Modplayer.prototype.mix = function(ape) {
     mod.delayload=0;
     
     // update this.chvu from player channel vu
-    for(i=0;i<mod.player.channels;i++) mod.chvu[i]=mod.chvu[i]*0.25 + mod.player.chvu[i]*0.75;    
+    for(i=0;i<mod.player.channels;i++) {
+      mod.chvu[i]=mod.chvu[i]*0.25 + mod.player.chvu[i]*0.75;    
+      mod.player.chvu[i]=0.0;
+    }
   }
 
 

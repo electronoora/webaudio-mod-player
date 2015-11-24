@@ -379,7 +379,6 @@ Protracker.prototype.mix = function(mod, bufs, buflen) {
       var och=0;
       for(var ch=0;ch<mod.channels;ch++)
       {
-        mod.chvu[ch]=0.0;
 
         // calculate playback position
         p=mod.patterntable[mod.position];
