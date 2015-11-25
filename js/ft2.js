@@ -52,9 +52,9 @@ function Fasttracker()
       428.0
   ]);
 
-  this.pan_r=new Float32Array(32);
-  this.pan_l=new Float32Array(32);
-  for(i=0;i<32;i++) { this.pan_r[i]=0.5; this.pan_l[i]=0.5; }
+  this.pan=new Float32Array(32);
+  this.finalpan=new Float32Array(32);
+  for(i=0;i<32;i++) this.pan[i]=this.finalpan[i]=0.5;
 
   // calc tables for vibrato waveforms
   this.vibratotable=new Array();
@@ -626,8 +626,7 @@ Fasttracker.prototype.process_note = function(mod, p, ch) {
       mod.channel[ch].playdir=1; // fixes crash in respirator.xm pos 0x12
       
       // set pan from sample
-      mod.pan_r[ch]=mod.instrument[i-1].sample[s].panning/255.0;
-      mod.pan_l[ch]=1.0-mod.pan_r[ch];
+      mod.pan[ch]=mod.instrument[i-1].sample[s].panning/255.0;
     }
     mod.channel[ch].voicevolume=mod.channel[ch].volume;
   }
@@ -811,6 +810,9 @@ Fasttracker.prototype.process_tick = function(mod) {
     // calc final volume for channel
     mod.channel[ch].finalvolume=mod.channel[ch].voicevolume * mod.instrument[i].volenv[mod.channel[ch].volenvpos] * mod.channel[ch].fadeoutpos/65536.0;
 
+    // calc final panning for channel
+    mod.finalpan[ch]=mod.pan[ch]+(mod.instrument[i].panenv[mod.channel[ch].panenvpos]-0.5)*(0.5*Math.abs(mod.pan[ch]-0.5))*2.0;
+
     // setup volramp if voice volume changed
     if (mod.channel[ch].oldfinalvolume!=mod.channel[ch].finalvolume) {
       mod.channel[ch].volrampfrom=mod.channel[ch].oldfinalvolume;
@@ -887,9 +889,9 @@ Fasttracker.prototype.mix = function(mod, bufs, buflen) {
           mod.channel[ch].volramp=Math.min(1.0, f);
 
           // pan samples, if envelope is disabled panvenv is always 0.5
-          f=mod.instrument[i].panenv[mod.channel[ch].panenvpos];
-          fr=fl*(mod.pan_r[ch] + f);
-          fl*=(mod.pan_l[ch] + (1.0-f));
+          f=mod.finalpan[ch];
+          fr=fl*f;
+          fl*=1.0-f;
         }
         outp[0]+=fl;
         outp[1]+=fr;
@@ -972,8 +974,7 @@ Fasttracker.prototype.effect_vol_t0_b0=function(mod, ch, data) { // b0-bf vibrat
   mod.effect_t1_4(mod, ch);
 }
 Fasttracker.prototype.effect_vol_t0_c0=function(mod, ch, data) { // c0-cf set panning
-  mod.pan_r[ch]=(data&0x0f)/15.0;
-  mod.pan_l[ch]=1.0-mod.pan_r[ch];
+  mod.pan[ch]=(data&0x0f)/15.0;
 }
 Fasttracker.prototype.effect_vol_t0_d0=function(mod, ch, data) { // d0-df panning slide left
 }
@@ -1044,8 +1045,7 @@ Fasttracker.prototype.effect_t0_6=function(mod, ch) { // 6
 Fasttracker.prototype.effect_t0_7=function(mod, ch) { // 7
 }
 Fasttracker.prototype.effect_t0_8=function(mod, ch) { // 8 set panning
-  mod.pan_r[ch]=mod.channel[ch].data/255.0;
-  mod.pan_l[ch]=1.0-mod.pan_r[ch];
+  mod.pan[ch]=mod.channel[ch].data/255.0;
 }
 Fasttracker.prototype.effect_t0_9=function(mod, ch) { // 9 set sample offset
   mod.channel[ch].samplepos=mod.channel[ch].data*256;
