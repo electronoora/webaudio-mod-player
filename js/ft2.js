@@ -413,8 +413,8 @@ Fasttracker.prototype.parse = function(buffer)
       if (this.instrument[i].voltype&1) {
         for(j=0;j<325;j++) {
           var p, delta;
-          p=0;
-          while(tmp_volenv[p][0]<=j && p<11) p++;
+          p=1;
+          while(tmp_volenv[p][0]<j && p<11) p++;
           if (tmp_volenv[p][0] == tmp_volenv[p-1][0]) { delta=0; } else {
             delta=(tmp_volenv[p][1]-tmp_volenv[p-1][1]) / (tmp_volenv[p][0]-tmp_volenv[p-1][0]);
           }
@@ -431,8 +431,8 @@ Fasttracker.prototype.parse = function(buffer)
       if (this.instrument[i].pantype&1) {
         for(j=0;j<325;j++) {
           var p, delta;
-          p=0;
-          while(tmp_panenv[p][0]<=j && p<11) p++;
+          p=1;
+          while(tmp_panenv[p][0]<j && p<11) p++;
           if (tmp_panenv[p][0] == tmp_panenv[p-1][0]) { delta=0; } else {
             delta=(tmp_panenv[p][1]-tmp_panenv[p-1][1]) / (tmp_panenv[p][0]-tmp_panenv[p-1][0]);
           }
@@ -770,14 +770,14 @@ Fasttracker.prototype.process_tick = function(mod) {
 
       if (mod.channel[ch].noteon &&
           (mod.instrument[i].voltype&2) &&
-          mod.channel[ch].volenvpos > mod.instrument[i].volsustain)
+          mod.channel[ch].volenvpos >= mod.instrument[i].volsustain)
         mod.channel[ch].volenvpos=mod.instrument[i].volsustain;
 
       if ((mod.instrument[i].voltype&4) &&
-          mod.channel[ch].volenvpos > mod.instrument[i].volloopend)
+          mod.channel[ch].volenvpos >= mod.instrument[i].volloopend)
         mod.channel[ch].volenvpos=mod.instrument[i].volloopstart;
 
-      if (mod.channel[ch].volenvpos > mod.instrument[i].volenvlen)
+      if (mod.channel[ch].volenvpos >= mod.instrument[i].volenvlen)
         mod.channel[ch].volenvpos=mod.instrument[i].volenvlen;
 
       if (mod.channel[ch].volenvpos>324) mod.channel[ch].volenvpos=324;
@@ -795,14 +795,14 @@ Fasttracker.prototype.process_tick = function(mod) {
 
       if (mod.channel[ch].noteon &&
           mod.instrument[i].pantype&2 &&
-          mod.channel[ch].panenvpos > mod.instrument[i].pansustain)
+          mod.channel[ch].panenvpos >= mod.instrument[i].pansustain)
         mod.channel[ch].panenvpos=mod.instrument[i].pansustain;
 
       if (mod.instrument[i].pantype&4 &&
-          mod.channel[ch].panenvpos > mod.instrument[i].panloopend)
+          mod.channel[ch].panenvpos >= mod.instrument[i].panloopend)
         mod.channel[ch].panenvpos=mod.instrument[i].panloopstart;
 
-      if (mod.channel[ch].panenvpos > mod.instrument[i].panenvlen)
+      if (mod.channel[ch].panenvpos >= mod.instrument[i].panenvlen)
         mod.channel[ch].panenvpos=mod.instrument[i].panenvlen;
 
       if (mod.channel[ch].panenvpos>324) mod.channel[ch].panenvpos=324;
