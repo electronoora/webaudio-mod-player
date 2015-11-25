@@ -2,14 +2,6 @@
   fast tracker 2 module player for web audio api
   (c) 2015 firehawk/tda  (firehawk@haxor.fi)
 
-  todo:
-  - sample sequences in te-2rx.xm, little_man.xm and yuki_satellites.xm play off sync
-  - fix clicks - ramping isn's always working as intended
-  - implement missing volume column effect commands
-  - implement missing ft2 commands
-  - implement instrument vibrato
-  - compatibility for versions older than 104h
-
   reading material:
   - ftp://ftp.modland.com/pub/documents/format_documentation/FastTracker%202%20v2.04%20(.xm).html
   - http://sid.ethz.ch/debian/milkytracker/milkytracker-0.90.85%2Bdfsg/resources/reference/xm-form.txt
@@ -341,7 +333,7 @@ Fasttracker.prototype.parse = function(buffer)
       
     for(k=0;k<(this.patternlen[i]*this.channels*5);k+=5) {      
       // remap note to st3-style, 255=no note, 254=note off
-      if (this.pattern[i][k+0]==97) {
+      if (this.pattern[i][k+0]>=97) {
         this.pattern[i][k+0]=254;
       } else if (this.pattern[i][k+0]==0) {
         this.pattern[i][k+0]=255;
