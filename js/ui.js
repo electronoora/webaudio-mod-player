@@ -107,6 +107,17 @@ function vu(l)
   return b;
 }
 
+function showLoaderInfo(module)
+{
+  window.loaderInterval=setInterval(function(){
+    if (module.loading) {
+      $("#modtimer").html(module.state);
+    } else {
+      clearInterval(window.loaderInterval);
+    }
+  }, 20);
+}
+
 function addToPlaylist(song)
 {
   var dupe=false;
@@ -135,7 +146,6 @@ function playFromPlaylist(module, autostart)
 {
   module.stopaudio();
   module.setautostart(autostart);
-  $("#modtimer").html("loading");
   var loadInterval=setInterval(function(){
     if (!module.delayload) {
        window.currentModule=$("#playlist_box option:selected").val();
@@ -143,6 +153,7 @@ function playFromPlaylist(module, autostart)
        window.playlistActive=true;
        module.load(musicPath+$("#playlist_box option:selected").val());
        clearInterval(loadInterval);
+       showLoaderInfo(module);
     }
   }, 200);
 }
@@ -321,7 +332,7 @@ $(document).ready(function() {
       pd+="</div>";
     }
     $("#modpattern").html(pd);
-    $("#modtimer").html("ready");
+    $("#modtimer").html("ready.");
   };
 
   module.onPlay=function() {
@@ -502,9 +513,9 @@ $(document).ready(function() {
       if (!module.delayload) {
          window.currentModule=$("#modfile").val();
          window.playlistActive=false;
-         $("#modtimer").html("loading");
          module.load(musicPath+$("#modfile").val());
          clearInterval(loadInterval);
+         showLoaderInfo(module);
       }
     }, 200);
     return false;
@@ -547,7 +558,6 @@ $(document).ready(function() {
     if (opt.length) {
       if (module.playing) module.stop();
       module.setautostart(true);
-      $("#modtimer").html("loading");
       $("#loadercontainer").hide();
       $("#innercontainer").show();
       var loadInterval=setInterval(function(){
@@ -686,7 +696,17 @@ $(document).ready(function() {
       $("#load_song").click();
     } else {
       $('#modfile option[value="'+window.currentModule+'"]').attr('selected', 'selected');
-      if ($("#modfile").val()!="") module.load(musicPath+$("#modfile").val());
+      if ($("#modfile").val()!="") {
+        var loadInterval=setInterval(function(){
+          if (!module.delayload) {
+             window.currentModule=$("#modfile").val();
+             window.playlistActive=false;
+             module.load(musicPath+$("#modfile").val());
+             clearInterval(loadInterval);
+             showLoaderInfo(module);
+          }
+        }, 200);
+      }
     }
   }
   request.send();

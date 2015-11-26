@@ -74,8 +74,8 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
       <div id="innercontainer">
         <div id="modsamples"><?php for($i=0;$i<31;$i++) echo "\n"; ?></div>
         <div style="position:relative;top:8px;margin-bottom:8px;">
-          <span id="modtitle"></span>
-          <span id="modinfo"></span>
+          <span id="modtitle"><?php for($i=0;$i<28;$i++) echo "&nbsp;"; ?></span>
+          <span id="modinfo">('&nbsp;&nbsp;&nbsp;&nbsp;')</span>
           <span id="modtimer"></span>
           <br/><br/>
           <a class="inactive" href="#" id="prev_track">[|&lt;]</a>

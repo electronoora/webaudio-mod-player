@@ -390,9 +390,6 @@ Screamtracker.prototype.parse = function(buffer)
     }
   }
 
-  this.ready=true;
-  this.loading=false;
-
   this.chvu=new Float32Array(this.channels);
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
 

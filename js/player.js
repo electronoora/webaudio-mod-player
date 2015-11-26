@@ -10,8 +10,10 @@ function Modplayer()
   this.url="";
   this.format="s3m";
 
+  this.state="initializing..";
+  this.request=null;
+
   this.loading=false;
-  this.ready=false;
   this.playing=false;
   this.paused=false;
   this.repeat=false;
@@ -86,14 +88,19 @@ Modplayer.prototype.load = function(url)
 
   this.player.onReady=this.loadSuccess;
 
+  this.state="loading..";
   var request = new XMLHttpRequest();
   request.open("GET", this.url, true);
   request.responseType = "arraybuffer";
   this.request = request;
   this.loading=true;
   var asset = this;
+  request.onprogress = function(oe) {
+    asset.state="loading ("+Math.floor(100*oe.loaded/oe.total)+"%)..";
+  };
   request.onload = function() {
     var buffer=new Uint8Array(request.response);
+    this.state="parsing..";
     if (asset.player.parse(buffer)) {
       // copy static data from player
       asset.title=asset.player.title
@@ -111,11 +118,13 @@ Modplayer.prototype.load = function(url)
         for(i=0;i<asset.player.sample.length;i++) asset.samplenames[i]=asset.player.sample[i].name;
       }
 
-      // set player variables from wrapper
-      asset.player.separation=asset.separation;
-
+      asset.state="ready.";
+      asset.loading=false;
       asset.onReady();
       if (asset.autostart) asset.play();
+    } else {
+      asset.state="error!";
+      asset.loading=false;
     }
   }
   request.send();
@@ -124,14 +133,14 @@ Modplayer.prototype.load = function(url)
 
 
 
+
 // play loaded and parsed module with webaudio context
 Modplayer.prototype.play = function()
 {
+  if (this.loading) return false;
   if (this.player) {
     if (this.context==null) this.createContext();
     this.player.samplerate=this.samplerate;
-
-    if (!this.player.ready) return false;
 
     if (this.player.paused) {
       this.player.paused=false;
