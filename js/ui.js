@@ -227,8 +227,16 @@ function setVisualization(mod, v)
 
 var oldpos=-1, oldrow=-1;
 
+var lastframe=-1;
 function updateUI(timestamp)
 {
+  // maintain 25hz frame rate for the UI
+  if ((timestamp-lastframe) < 40) {
+    requestAnimationFrame(updateUI);
+    return;
+  }
+  lastframe=timestamp;
+
   var i,c;
   var mod=window.module;
 
