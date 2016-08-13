@@ -224,11 +224,56 @@ function setVisualization(mod, v)
   window.moduleVis=v;
 }
 
-$(document).ready(function() {
-  var timer;
-  var module=new Modplayer();
-  var oldpos=-1;
 
+var oldpos=-1, oldrow=-1;
+
+function updateUI(timestamp)
+{
+  var i,c;
+  var mod=window.module;
+
+  if (mod.playing) {
+    if (window.moduleVis==2) {
+      var txt, txt0="<br/>", txt1="<br/>";
+      for(ch=0;ch<mod.channels;ch++) {
+        txt='<span class="channelnr">'+hb(ch)+'</span> ['+vu(mod.chvu[ch])+'] '+
+            '<span class="hl">'+hb(mod.currentsample(ch))+'</span>:<span class="channelsample">'+rpe(pad(mod.samplenames[mod.currentsample(ch)], 28))+"</span><br/>";
+        if (ch&1) txt0+=txt; else txt1+=txt;
+      }
+      $("#even-channels").html(txt0);
+      $("#odd-channels").html(txt1);
+    } else if (window.moduleVis==1) {
+      if (oldpos>=0 && oldrow>=0) $(".currentrow").removeClass("currentrow");
+      $("#pattern"+hb(mod.currentpattern())+"_row"+hb(mod.row)).addClass("currentrow");
+      $("#pattern"+hb(mod.currentpattern())).scrollTop(mod.row*16);
+      if (oldpos != mod.position) {
+        if (oldpos>=0) $(".currentpattern").removeClass("currentpattern");
+        $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
+      }
+    }
+
+    if (oldrow != mod.row || oldpos != mod.position) {
+      $("#modtimer").replaceWith("<span id=\"modtimer\">"+
+        "pos <span class=\"hl\">"+hb(mod.position)+"</span>/<span class=\"hl\">"+hb(mod.songlen)+"</span> "+
+        "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">"+hb(mod.currentpattlen()-1)+"</span> "+
+        "speed <span class=\"hl\">"+mod.speed+"</span> "+
+        "bpm <span class=\"hl\">"+mod.bpm+"</span> "+
+        "filter <span class=\"hl\">"+(mod.filter ? "on" : "off")+"</span>"+
+        "</span>");
+
+      $("#modsamples").children().removeClass("activesample");
+      for(c=0;c<mod.channels;c++)
+        if (mod.noteon(c)) $("#sample"+hb(mod.currentsample(c)+1)).addClass("activesample");
+    }
+    oldpos=mod.position;
+    oldrow=mod.row;
+  }
+  requestAnimationFrame(updateUI);
+}
+
+
+$(document).ready(function() {
+  window.module=new Modplayer();
   window.playlistPosition=0;
   window.playlistActive=false;
 
@@ -336,49 +381,9 @@ $(document).ready(function() {
   };
 
   module.onPlay=function() {
-    var oldpos=-1, oldrow=-1;
     $("#play").html("[stop]");
     if (!this.paused) $("#pause").removeClass("down");
-    timer=setInterval(function(){
-      var i,c;
-      var mod=module;
-
-      if (window.moduleVis==2) {
-        var txt, txt0="<br/>", txt1="<br/>";
-        for(ch=0;ch<mod.channels;ch++) {
-          txt='<span class="channelnr">'+hb(ch)+'</span> ['+vu(mod.chvu[ch])+'] '+
-              '<span class="hl">'+hb(mod.currentsample(ch))+'</span>:<span class="channelsample">'+rpe(pad(mod.samplenames[mod.currentsample(ch)], 28))+"</span><br/>";
-          if (ch&1) txt0+=txt; else txt1+=txt;
-        }
-        $("#even-channels").html(txt0);
-        $("#odd-channels").html(txt1);
-      }
-      if (window.moduleVis==1) {
-        if (oldpos>=0 && oldrow>=0) $(".currentrow").removeClass("currentrow");
-        $("#pattern"+hb(mod.currentpattern())+"_row"+hb(mod.row)).addClass("currentrow");
-        $("#pattern"+hb(mod.currentpattern())).scrollTop(mod.row*16);
-        if (oldpos != mod.position) {
-          if (oldpos>=0) $(".currentpattern").removeClass("currentpattern");
-          $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
-        }
-      }
-
-      if (oldrow != mod.row || oldpos != mod.position) {
-        $("#modtimer").replaceWith("<span id=\"modtimer\">"+
-          "pos <span class=\"hl\">"+hb(mod.position)+"</span>/<span class=\"hl\">"+hb(mod.songlen)+"</span> "+
-          "row <span class=\"hl\">"+hb(mod.row)+"</span>/<span class=\"hl\">"+hb(mod.currentpattlen()-1)+"</span> "+
-          "speed <span class=\"hl\">"+mod.speed+"</span> "+
-          "bpm <span class=\"hl\">"+mod.bpm+"</span> "+
-          "filter <span class=\"hl\">"+(mod.filter ? "on" : "off")+"</span>"+
-          "</span>");
-
-        $("#modsamples").children().removeClass("activesample");
-        for(c=0;c<mod.channels;c++)
-          if (mod.noteon(c)) $("#sample"+hb(mod.currentsample(c)+1)).addClass("activesample");
-      }
-      oldpos=mod.position;
-      oldrow=mod.row;
-    }, (mobileSafari ? 80.0 : 40.0) ); // half display update speed for iOS
+    requestAnimationFrame(updateUI);
   };
 
   module.onStop=function() {
@@ -386,7 +391,6 @@ $(document).ready(function() {
     $("#even-channels").html("");
     $("#odd-channels").html("");
     $(".currentpattern").removeClass("currentpattern");
-    clearInterval(timer);
     $("#modtimer").html("stopped");
     $("#play").html("[play]");
 

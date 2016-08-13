@@ -69,7 +69,7 @@ option:checked {
 
 #infotext { margin-top: 16px; color: #aae; }
 
-#load_song { float:right; }
+/* #load_song { float:right; } */
 
 #modfile { float:left; width: 480px; }
 #fileinfo { width: 480px; float:left; margin-left: 0px; margin-top: 0px; color: #aae; }

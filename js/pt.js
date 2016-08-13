@@ -22,7 +22,7 @@ function Protracker()
 
   this.filter=false;
 
-  this.mixval=8.0;
+  this.mixval=4.0;
 
   this.syncqueue=[];
 

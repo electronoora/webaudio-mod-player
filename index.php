@@ -89,7 +89,8 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
           <a class="down" title="Stereo separation" href="#" id="modpaula">[)oo(]</a>
           <a class="down" title="Visualization type" href="#" id="modvis">[trks]</a>
           <a title="Amiga A500 lowpass filter" href="#" id="modamiga">[filt]</a>
-          <a href="#" id="load_song">[load song]</a>
+          <span style="white-space:pre;">     </span>
+          <a title="Load song or edit playlist" href="#" id="load_song">[load song]</a>
         </div>
         <div id="modchannels"><div id="even-channels"></div><div id="odd-channels"></div></div>
         <div id="modpattern"></div>

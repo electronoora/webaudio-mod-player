@@ -409,14 +409,10 @@ Modplayer.prototype.createContext = function()
   this.mixerNode.module=this;
   this.mixerNode.onaudioprocess=Modplayer.prototype.mix;
 
-  // compressor for a bit of volume boost, helps with multich tunes
-  this.compressorNode=this.context.createDynamicsCompressor();
-
   // patch up some cables :)
   this.mixerNode.connect(this.filterNode);
   this.filterNode.connect(this.lowpassNode);
-  this.lowpassNode.connect(this.compressorNode);
-  this.compressorNode.connect(this.context.destination);
+  this.lowpassNode.connect(this.context.destination);
 }
 
 
@@ -480,7 +476,7 @@ Modplayer.prototype.mix = function(ape) {
     mod.delayload=0;
     
     // update this.chvu from player channel vu
-    for(i=0;i<mod.player.channels;i++) {
+    for(var i=0;i<mod.player.channels;i++) {
       mod.chvu[i]=mod.chvu[i]*0.25 + mod.player.chvu[i]*0.75;    
       mod.player.chvu[i]=0.0;
     }

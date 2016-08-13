@@ -520,7 +520,7 @@ Fasttracker.prototype.parse = function(buffer)
     i++;
   }
 
-  this.mixval=8.0; // todo: this is quite crude. ;)
+  this.mixval=4.0-2.0*(this.channels/32.0);
 
   this.chvu=new Float32Array(this.channels);
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
