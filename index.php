@@ -31,7 +31,7 @@
     <title>MOD/S3M/XM module player for Web Audio</title>
     <meta name="description" content="A MOD/S3M/XM module player in Javascript using the Web Audio API.">
     <link rel="stylesheet" href="/style.css" type="text/css" media="screen" />
-    <script src="http://code.jquery.com/jquery-2.1.1.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.1.js"></script>
 <?php
 $browserAsString = $_SERVER['HTTP_USER_AGENT'];
 if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobile/"))
