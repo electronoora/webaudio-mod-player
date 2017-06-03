@@ -284,7 +284,7 @@ Protracker.prototype.parse = function(buffer)
     p=this.patterntable[0];
     pp=ch*4;
     var cmd=this.pattern[p][pp+2]&0x0f, data=this.pattern[p][pp+3];
-    if (cmd==0x0e && !(data&0x01)) {
+    if (cmd==0x0e && ((data&0xf0)==0x00) && !(data&0x01)) {
       this.filter=true;
     }
   }
