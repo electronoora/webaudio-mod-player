@@ -548,7 +548,7 @@ Protracker.prototype.effect_t0_f=function(mod, ch) { // f set speed
 //
 Protracker.prototype.effect_t0_e0=function(mod, ch) { // e0 filter on/off
   if (mod.channels > 4) return; // use only for 4ch amiga tunes
-  if (mod.channel[ch].data&0x0f) {
+  if (mod.channel[ch].data&0x01) {
     mod.filter=true;
   } else {
     mod.filter=false;
