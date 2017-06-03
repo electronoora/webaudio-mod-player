@@ -284,7 +284,7 @@ Protracker.prototype.parse = function(buffer)
     p=this.patterntable[0];
     pp=ch*4;
     var cmd=this.pattern[p][pp+2]&0x0f, data=this.pattern[p][pp+3];
-    if (cmd==0x0e && data>=0x01 && data<0x10) {
+    if (cmd==0x0e && !(data&0x01)) {
       this.filter=true;
     }
   }
@@ -549,9 +549,9 @@ Protracker.prototype.effect_t0_f=function(mod, ch) { // f set speed
 Protracker.prototype.effect_t0_e0=function(mod, ch) { // e0 filter on/off
   if (mod.channels > 4) return; // use only for 4ch amiga tunes
   if (mod.channel[ch].data&0x01) {
-    mod.filter=true;
-  } else {
     mod.filter=false;
+  } else {
+    mod.filter=true;
   }
 }
 Protracker.prototype.effect_t0_e1=function(mod, ch) { // e1 fine slide up
