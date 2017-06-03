@@ -109,6 +109,7 @@ Modplayer.prototype.load = function(url)
       asset.channels=asset.player.channels;
       asset.patterns=asset.player.patterns;
       asset.filter=asset.player.filter;
+      if (asset.context) asset.setfilter(asset.filter);
       asset.mixval=asset.player.mixval; // usually 8.0, though
       asset.samplenames=new Array(32)
       for(i=0;i<32;i++) asset.samplenames[i]="";
@@ -146,6 +147,7 @@ Modplayer.prototype.play = function()
       this.player.paused=false;
       return true;
     }
+
     this.endofsong=false;
     this.player.endofsong=false;
     this.player.paused=false;
