@@ -142,6 +142,7 @@ Modplayer.prototype.play = function()
   if (this.player) {
     if (this.context==null) this.createContext();
     this.player.samplerate=this.samplerate;
+    if (this.context) this.setfilter(this.player.filter);
 
     if (this.player.paused) {
       this.player.paused=false;
