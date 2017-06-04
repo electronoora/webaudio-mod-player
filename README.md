@@ -23,7 +23,7 @@ into some bad ones.
 
 You can test the player here:
 
-<a href="http://mod.haxor.fi/">http://mod.haxor.fi/</a>
+<a href="https://mod.haxor.fi/">https://mod.haxor.fi/</a>
 
 
 To install on your own server, clone the repo to the document root and edit+rename example.htaccess to match your domain.
