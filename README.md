@@ -39,7 +39,7 @@ are supported but extension must always be in lowercase):
 
 
 Copyrights:
-- MOD/S3M/XM module player for Web Audio (c) 2012-2015 Jani Halme
+- MOD/S3M/XM module player for Web Audio (c) 2012-2017 Jani Halme
 - Topaz TTF font (c) 2009 dMG of Trueschool and Divine Stylers
 - "overload" (c) 1991 by Mantronix and Tip of Phenomena
 - "Point of Departure" (c) 1995 Necros / FM

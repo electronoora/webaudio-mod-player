@@ -1,4 +1,4 @@
-<!-- MOD/S3M/XM module player for Web Audio (c) 2012-2015 Firehawk/TDA (firehawk@haxor.fi) -->
+<!-- MOD/S3M/XM module player for Web Audio (c) 2012-2017 Firehawk/TDA (firehawk@haxor.fi) -->
 <?php
   ///////////////////
   // configuration
@@ -68,7 +68,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
     <div id="outercontainer">
       <div id="headercontainer">
         <div style="margin-left:8px;float:left">MOD/S3M/XM module player for Web Audio</div>
-        <div style="margin-right:8px;float:right">(c) 2012-2015 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
+        <div style="margin-right:8px;float:right">(c) 2012-2017 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
         <div style="clear:both;"></div>
       </div>
       <div id="innercontainer">

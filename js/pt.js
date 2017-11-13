@@ -1,6 +1,6 @@
 /*
   protracker module player for web audio api
-  (c) 2012-2015 firehawk/tda  (firehawk@haxor.fi)
+  (c) 2012-2017 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
   - pattern looping is broken (see mod.black_queen)

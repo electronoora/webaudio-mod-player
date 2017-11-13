@@ -1,6 +1,6 @@
 /*
   fast tracker 2 module player for web audio api
-  (c) 2015 firehawk/tda  (firehawk@haxor.fi)
+  (c) 2015-2017 firehawk/tda  (firehawk@haxor.fi)
 
   reading material:
   - ftp://ftp.modland.com/pub/documents/format_documentation/FastTracker%202%20v2.04%20(.xm).html

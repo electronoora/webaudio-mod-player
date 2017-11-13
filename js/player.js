@@ -1,6 +1,6 @@
 /*
   front end wrapper class for format-specific player classes
-  (c) 2015 firehawk/tda
+  (c) 2015-2017 firehawk/tda
 */
 
 function Modplayer()

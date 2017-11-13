@@ -1,6 +1,6 @@
 /*
   scream tracker 3 module player for web audio api
-  (c) 2015 firehawk/tda  (firehawk@haxor.fi)
+  (c) 2015-2017 firehawk/tda  (firehawk@haxor.fi)
 
   todo:
   - are Exx, Fxx and Gxx supposed to share a single
