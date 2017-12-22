@@ -1,6 +1,8 @@
 webaudio-mod-player
 ===================
 
+![Screenshot](https://raw.githubusercontent.com/jhalme/webaudio-mod-player/master/screenshot.jpg)
+
 This is a MOD/S3M/XM module player implemented in Javascript using the Web Audio API and runs fully within the browser. It
 has been tested and confirmed to work on Chrome 14+, Firefox 24+, Safari 6+ and Edge 20+. The Javascript performance of
 the browsers varies significantly, so some modules may stutter on one browser while the same module can play flawlessly
