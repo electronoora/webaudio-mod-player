@@ -146,6 +146,7 @@ function playFromPlaylist(module, autostart)
 {
   module.stopaudio();
   module.setautostart(autostart);
+  oldpos=-1;
   var loadInterval=setInterval(function(){
     if (!module.delayload) {
        window.currentModule=$("#playlist_box option:selected").val();
@@ -519,6 +520,7 @@ $(document).ready(function() {
     } else {
       module.setautostart(false);
     }
+    oldpos=-1;
     $("#loadercontainer").hide();
     $("#innercontainer").show();
     var loadInterval=setInterval(function(){
@@ -569,6 +571,7 @@ $(document).ready(function() {
     var opt=$("#playlist_box option:selected");
     if (opt.length) {
       if (module.playing) module.stop();
+      oldpos=-1;
       module.setautostart(true);
       $("#loadercontainer").hide();
       $("#innercontainer").show();
