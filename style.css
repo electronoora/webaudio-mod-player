@@ -1,0 +1,132 @@
+@font-face {
+  font-family: 'Topaz';
+  src: url('topaz.ttf');
+}
+
+body {
+  font-family: Topaz;
+  font-size: 16px; background-color: #000; color: #ccc; font-weight: normal;
+  line-height: 16px;
+}
+a { color: #99c; text-decoration: none; }
+a:visited { color: #99c; }
+a:hover { color: #ddf; }
+a.down:hover { color: #fdd !important; }
+
+a.inactive, a.inactive:visited, a.inactive:hover { color: #445; }
+
+.tdalink { color: #113 !important; }
+.tdalink:hover { color: #558 !important; }
+.tdalink:visited { color:#113 !important; }
+
+select, input {
+  background-color: #000; color: #8f8;
+  font-family: Topaz;
+  font-size: 16px;
+  margin-bottom: 16px;
+  border: 0px;
+  outline: none; font-style: normal; font-weight: normal;
+  line-height: 16px;
+}
+optgroup { font-family: Topaz; font-size: 16px; color: #88f; font-style: normal; font-weight: normal; line-height: 16px; }
+option { font-family: Topaz; color: #8f8; font-size: 16px; height: 16px; line-height: 16px; padding: 0; }
+.odd { background-color: #181818; }
+.even { background-color: #222222; }
+
+option:focus,
+option:active,
+option:checked {
+  background-color: #aae;
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 16px;
+  color: #fff;
+  border: 1px solid #484;
+  background-color: #242;
+}
+::-webkit-scrollbar-thumb {
+  color: #88f;
+  background-color: #484;
+  border: 1px solid #fff;
+}
+
+#outercontainer {
+  width: 1176px;
+  margin: 0 auto 0 auto;
+}
+
+#headercontainer { background-color:#0bc; color:#000; margin-bottom:8px; padding-top: 1px; padding-bottom: 1px; }
+
+#modtitle { white-space: pre; color: #fff; }
+#modinfo { color: #aaa; }
+#modtimer { color: #99b; }
+
+#modsamples { white-space:pre; float:right; margin-left:8px; color: #888 }
+
+#modpattern { white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; color: #778; }
+
+#infotext { margin-top: 16px; color: #aae; }
+
+/* #load_song { float:right; } */
+
+#modfile { float:left; width: 480px; }
+#fileinfo { width: 480px; float:left; margin-left: 0px; margin-top: 0px; color: #aae; }
+
+#playlist_box { width: 416px; }
+
+#musiclibrary {
+  color: #aae;
+  width: 500px;
+  float: left;
+}
+
+#playlist {
+  width: 420px;
+  float: right;
+  color: #aae;
+}
+
+.hl { color: #fff; }
+.down { color: #faa !important; }
+
+.note { color: #88f; }
+.sample { color: #8ff; }
+.command { color: #8f8; }
+.volume { color: #a4c; }
+
+.samplelist { background-color: #000; color: #778; }
+.activesample { background-color: #135; color: #fff; }
+
+.currentrow { background-color: #335; color: #ccc; }
+
+.filesize { color: #444; }
+
+.patterndata {
+  height: 24.0em;
+  margin-top: 0px;
+  overflow: hidden;
+  display: none;
+}
+
+.currentpattern {
+  display: inline-block !important;
+}
+
+#modchannels {
+  white-space:pre; float:left; margin-top: 16px; height: 24.0em; overflow: hidden; color: #99b;
+  display: none;
+}
+
+#even-channels {
+  width: 50%;
+  float:right;
+}
+#odd-channels {
+  width: 50%;
+  float:left;
+}
+
+.channelnr { color:#778; }
+.channelsample { color:#778; }

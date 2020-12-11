@@ -1,0 +1,32 @@
+RewriteEngine on
+
+RewriteCond %{HTTP_HOST} !^mod.haxor.fi$
+RewriteRule ^(.*)$ http://mod.haxor.fi/%{REQUEST_URI} [R,L]
+
+RewriteCond %{REQUEST_URI} ^/(.*)$
+RewriteCond /var/www/modplay/mods/%1 -d
+RewriteRule ^(.*)$ /?composer=%1 [L,QSA]
+
+RewriteCond %{REQUEST_URI} ^/(.*)/mod.(.*)$
+RewriteCond /var/www/modplay/mods/%1/mod.%2 -f
+RewriteRule ^(.*)$ /?mod=%1/mod.%2 [L,QSA]
+
+RewriteCond %{REQUEST_URI} ^/mod.(.*)$
+RewriteCond /var/www/modplay/mods/mod.%1 -f
+RewriteRule ^(.*)$ /?mod=mod.%1 [L,QSA]
+
+RewriteCond %{REQUEST_URI} ^/(.*).mod$
+RewriteCond /var/www/modplay/mods/%1.mod -f
+RewriteRule ^(.*)$ /?mod=%1.mod [L,QSA]
+
+RewriteCond %{REQUEST_URI} ^/(.*).s3m$
+RewriteCond /var/www/modplay/mods/%1.s3m -f
+RewriteRule ^(.*)$ /?mod=%1.s3m [L,QSA]
+
+RewriteCond %{REQUEST_URI} ^/(.*).xm$
+RewriteCond /var/www/modplay/mods/%1.xm -f
+RewriteRule ^(.*)$ /?mod=%1.xm [L,QSA]
+
+RewriteCond %{REQUEST_URI} ^/(.*).it$
+RewriteCond /var/www/modplay/mods/%1.it -f
+RewriteRule ^(.*)$ /?mod=%1.it [L,QSA]
