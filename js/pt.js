@@ -192,7 +192,8 @@ Protracker.prototype.parse = function(buffer)
       break;
 
     default:
-      return false;
+      this.signature = "";
+      this.samples = 15;
   }
   this.chvu=new Array();
   for(i=0;i<this.channels;i++) this.chvu[i]=0.0;
@@ -201,8 +202,9 @@ Protracker.prototype.parse = function(buffer)
   while(buffer[i] && i<20)
     this.title=this.title+String.fromCharCode(buffer[i++]);
 
+  var bufp = 20;
   for(i=0;i<this.samples;i++) {
-    var st=20+i*30;
+    var st=bufp+i*30;
     j=0;
     while(buffer[st+j] && j<22) {
       this.sample[i].name+=
@@ -224,15 +226,18 @@ Protracker.prototype.parse = function(buffer)
     }
   }
 
-  this.songlen=buffer[950];
-  if (buffer[951] != 127) this.repeatpos=buffer[951];
+  bufp += 30*this.samples;
+  this.songlen=buffer[bufp];
+  if (buffer[bufp+1] != 127) this.repeatpos=buffer[bufp+1];
+  bufp += 2;
   for(i=0;i<128;i++) {
-    this.patterntable[i]=buffer[952+i];
+    this.patterntable[i]=buffer[bufp+i];
     if (this.patterntable[i] > this.patterns) this.patterns=this.patterntable[i];
   }
   this.patterns+=1;
   var patlen=4*64*this.channels;
 
+  bufp += 128 + (this.samples===15 ? 0 : 4);
   this.pattern=new Array();
   this.note=new Array();
   this.pattern_unpack=new Array();
@@ -240,7 +245,7 @@ Protracker.prototype.parse = function(buffer)
     this.pattern[i]=new Uint8Array(patlen);
     this.note[i]=new Uint8Array(this.channels*64);
     this.pattern_unpack[i]=new Uint8Array(this.channels*64*5);
-    for(j=0;j<patlen;j++) this.pattern[i][j]=buffer[1084+i*patlen+j];
+    for(j=0;j<patlen;j++) this.pattern[i][j]=buffer[bufp+i*patlen+j];
     for(j=0;j<64;j++) for(c=0;c<this.channels;c++) {
       this.note[i][j*this.channels+c]=0;
       var n=(this.pattern[i][j*4*this.channels+c*4]&0x0f)<<8 | this.pattern[i][j*4*this.channels+c*4+1];
@@ -262,7 +267,7 @@ Protracker.prototype.parse = function(buffer)
     }
   }
 
-  var sst=1084+this.patterns*patlen;
+  var sst=bufp+this.patterns*patlen;
   for(i=0;i<this.samples;i++) {
     this.sample[i].data=new Float32Array(this.sample[i].length);
     for(j=0;j<this.sample[i].length;j++) {
