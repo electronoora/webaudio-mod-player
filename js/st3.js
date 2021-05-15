@@ -1,11 +1,14 @@
 /*
-  scream tracker 3 module player for web audio api
-  (c) 2015-2017 firehawk/tda  (firehawk@haxor.fi)
+  (c) 2012-2021 Noora Halme et al. (see AUTHORS)
+
+  This code is licensed under the MIT license:
+  http://www.opensource.org/licenses/mit-license.php
+
+  Scream Tracker 3 module player class
 
   todo:
   - are Exx, Fxx and Gxx supposed to share a single
     command data memory?
-
 */
 
 function Screamtracker()

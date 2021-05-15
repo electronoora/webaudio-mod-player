@@ -1,6 +1,10 @@
 /*
-  front end wrapper class for format-specific player classes
-  (c) 2015-2017 firehawk/tda
+  (c) 2012-2021 Noora Halme et al. (see AUTHORS)
+
+  This code is licensed under the MIT license:
+  http://www.opensource.org/licenses/mit-license.php
+
+  Front end wrapper class for format-specific players
 */
 
 function Modplayer()

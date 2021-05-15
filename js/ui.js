@@ -1,6 +1,10 @@
 /*
-  user interface stuff for the web audio module player
-  (c) 2012-2015 firehawk/tda
+  (c) 2012-2021 Noora Halme et al. (see AUTHORS)
+
+  This code is licensed under the MIT license:
+  http://www.opensource.org/licenses/mit-license.php
+
+  User interface code
 */
 
 var notelist=new Array("C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-");
@@ -698,7 +702,7 @@ $(document).ready(function() {
 
   // all done, load the song library and default module
   var request = new XMLHttpRequest();
-  request.open("GET", "/musicLibrary.php", true);
+  request.open("GET", "/music_library.json", true);
   request.responseType = "json";
   request.onload = function() {
     window.musicLibrary=eval(request.response);

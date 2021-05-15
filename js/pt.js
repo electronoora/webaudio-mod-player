@@ -1,11 +1,14 @@
 /*
-  protracker module player for web audio api
-  (c) 2012-2017 firehawk/tda  (firehawk@haxor.fi)
+  (c) 2012-2021 Noora Halme et al. (see AUTHORS)
+
+  This code is licensed under the MIT license:
+  http://www.opensource.org/licenses/mit-license.php
+
+  Protracker module player class
 
   todo:
   - pattern looping is broken (see mod.black_queen)
   - properly test EEx delay pattern
-
 */
 
 // constructor for protracker player object

@@ -1,4 +1,11 @@
-<!-- MOD/S3M/XM module player for Web Audio (c) 2012-2017 Firehawk/TDA (firehawk@haxor.fi) -->
+<!--
+  (c) 2012-2021 Noora Halme et al. (see AUTHORS)
+
+  This code is licensed under the MIT license:
+  http://www.opensource.org/licenses/mit-license.php
+
+  Main index file
+-->
 <?php
   ///////////////////
   // configuration
@@ -8,15 +15,8 @@
   // the array below
   $defmods=array(
     "Necros/point_of_departure.s3m",
-    "Skaven/autonomous.s3m",
-    "Dune/x14.s3m",
-    "Purple_Motion/2nd_pm.s3m",
     "Mantronix_and_Tip/mod.overload",
-    "Lizardking/mod.desert_dawn",
-    "Jester/mod.elysium",
-    "Uncle_Tom/mod.occ-san-geen",
-    "Captain/mod.beyond_music",
-    "Groo/mod.electrification"
+    "Jugi/we_go.xm"
   );
 
   // absolute URL path to where the modules are located - leading and trailing slashes are required!
@@ -68,7 +68,7 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
     <div id="outercontainer">
       <div id="headercontainer">
         <div style="margin-left:8px;float:left">MOD/S3M/XM module player for Web Audio</div>
-        <div style="margin-right:8px;float:right">(c) 2012-2017 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
+        <div style="margin-right:8px;float:right">(c) 2012-2021 Firehawk/<a class="tdalink" href="http://tda.haxor.fi/" target="_blank">TDA</a></div>
         <div style="clear:both;"></div>
       </div>
       <div id="innercontainer">

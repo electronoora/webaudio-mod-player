@@ -33,6 +33,8 @@ Then create a directory 'mods' alongside index.php and structure is like this (n
 are supported but extension must always be in lowercase):
 
 /mods<br/>
+/mods/Jugi<br/>
+/mogs/Jugi/we_go.xm<br/>
 /mods/Mantronix_and_Tip<br/>
 /mods/Mantronix_and_Tip/mod.overload<br/>
 /mods/Necros<br/>
@@ -41,7 +43,8 @@ are supported but extension must always be in lowercase):
 
 
 Copyrights:
-- MOD/S3M/XM module player for Web Audio (c) 2012-2017 Noora Halme
+- MOD/S3M/XM module player for Web Audio (c) 2012-2021 Noora Halme et al (see AUTHORS)
 - Topaz TTF font (c) 2009 dMG of Trueschool and Divine Stylers
 - "overload" (c) 1991 by Mantronix and Tip of Phenomena
 - "Point of Departure" (c) 1995 Necros / FM
+- "we go..." (c) 1996 by Jugi / Complex

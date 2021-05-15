@@ -1,3 +1,12 @@
+/*
+  (c) 2012-2021 Noora Halme et al. (see AUTHORS)
+
+  This code is licensed under the MIT license:
+  http://www.opensource.org/licenses/mit-license.php
+
+  Various utility functions
+*/
+
 // helper functions for picking up signed, unsigned, little endian, etc from an unsigned 8-bit buffer
 function le_word(buffer, offset) {
   return buffer[offset]|(buffer[offset+1]<<8);
