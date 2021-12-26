@@ -104,6 +104,7 @@ Modplayer.prototype.load = function(url)
   };
   request.onload = function() {
     var buffer=new Uint8Array(request.response);
+    //TODO: Reuse loadBuffer()
     this.state="parsing..";
     if (asset.player.parse(buffer)) {
       // copy static data from player
@@ -136,6 +137,47 @@ Modplayer.prototype.load = function(url)
   return true;
 }
 
+
+// Load module file from a Uint8Array buffer object and parses it
+//You must set up the 'player' property and 'format' property before calling this.
+//TODO: Check for data type. It fails if you pass ArrayBuffer or like that
+Modplayer.prototype.loadBuffer = function(buffer)
+{
+  if (!this.player) {
+    this.state = "error!";
+    return false;
+  }
+
+  this.state="parsing..";
+  if (this.player.parse(buffer)) {
+	// copy static data from player
+    this.title = this.player.title;
+    this.signature = this.player.signature;
+    this.songlen = this.player.songlen;
+    this.channels = this.player.channels;
+    this.patterns = this.player.patterns;
+    this.filter = this.player.filter;
+    if (this.context)
+      this.setfilter(this.filter);
+    this.mixval = this.player.mixval; // usually 8.0, though
+    this.samplenames = new Array(32)
+    for(i=0;i<32;i++) this.samplenames[i] = "";
+    if (this.format=='xm' || this.format=='it') {
+      for(i=0;i<this.player.instrument.length;i++) this.samplenames[i]=this.player.instrument[i].name;
+    } else {
+      for(i=0;i<this.player.sample.length;i++) this.samplenames[i]=this.player.sample[i].name;
+    }
+
+    this.state="ready.";
+    this.onReady();
+    if (this.autostart)
+      this.play();
+  } else {
+    this.state="error!";
+    this.loading = false;
+  }
+  return true;
+}
 
 
 
