@@ -97,8 +97,6 @@ if (strstr($browserAsString, " AppleWebKit/") && strstr($browserAsString, " Mobi
         <div style="clear:both"></div>
         <div id="infotext">
           The player has been tested on Chrome 14+, Firefox 24+, Safari 6+ and Edge 20+ so far. <span style="color:#faa">Disable AdBlock if you get cuts or stuttering!</span>
-          To report bugs, suggest features or request songs, contact me on <a href="https://twitter.com/noorahalme" style="color:#cce;">Twitter</a> or
-          email <a href="mailto:firehawk@haxor.fi" style="color:#cce">firehawk@haxor.fi</a>.
           Source code available on <a style="color:#cce;" target="_blank" href="https://github.com/electronoora/webaudio-mod-player">GitHub</a>.
         </div>
       </div>
