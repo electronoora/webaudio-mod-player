@@ -38,6 +38,7 @@ function Modplayer()
   this.onReady=function(){};
   this.onPlay=function(){};
   this.onStop=function(){};
+  this.onMix=function(){};
 
   this.buffer=0;
   this.mixerNode=0;
@@ -320,7 +321,16 @@ Modplayer.prototype.patterndata = function(pn)
 {
   var i, c, patt;
   if (this.format=='mod') {
-    patt=new Uint8Array(this.player.pattern_unpack[pn]);
+    if (this.player.track_index) {
+        patt = new Uint8Array(64*this.player.channels*5);
+        for(i=0;i<64;i++) for(c=0;c<this.player.channels;c++) {
+            var p = this.player.track_index[pn*this.player.channels*2+c*2];
+            for (var d=0; d<5; d++)
+                patt[i*5*this.player.channels+c*5+d] = this.player.pattern_unpack[p][i*5+d];
+        }
+    } else {
+        patt=new Uint8Array(this.player.pattern_unpack[this.player.patterntable[pn]]);
+    }
     for(i=0;i<64;i++) for(c=0;c<this.player.channels;c++) {
       if (patt[i*5*this.channels+c*5+3]==0 && patt[i*5*this.channels+c*5+4]==0) {
         patt[i*5*this.channels+c*5+3]=0x2e;
@@ -414,7 +424,7 @@ Modplayer.prototype.createContext = function()
     this.mixerNode=this.context.createScriptProcessor(this.bufferlen, 1, 2);
   }
   this.mixerNode.module=this;
-  this.mixerNode.onaudioprocess=Modplayer.prototype.mix;
+  this.mixerNode.onaudioprocess=Modplayer.prototype.mix.bind(this);
 
   // patch up some cables :)
   this.mixerNode.connect(this.filterNode);
@@ -489,5 +499,6 @@ Modplayer.prototype.mix = function(ape) {
     }
   }
 
+  this.onMix();
 
 }

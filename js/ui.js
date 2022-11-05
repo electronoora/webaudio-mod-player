@@ -257,11 +257,11 @@ function updateUI(timestamp)
       $("#odd-channels").html(txt1);
     } else if (window.moduleVis==1) {
       if (oldpos>=0 && oldrow>=0) $(".currentrow").removeClass("currentrow");
-      $("#pattern"+hb(mod.currentpattern())+"_row"+hb(mod.row)).addClass("currentrow");
-      $("#pattern"+hb(mod.currentpattern())).scrollTop(mod.row*16);
+      $("#pattern"+hb(mod.position)+"_row"+hb(mod.row)).addClass("currentrow");
+      $("#pattern"+hb(mod.position)).scrollTop(mod.row*16);
       if (oldpos != mod.position) {
         if (oldpos>=0) $(".currentpattern").removeClass("currentpattern");
-        $("#pattern"+hb(mod.currentpattern())).addClass("currentpattern");
+        $("#pattern"+hb(mod.position)).addClass("currentpattern");
       }
     }
 
@@ -358,10 +358,12 @@ $(document).ready(function() {
     var s=window.currentModule.split("/");
     if (s.length > 1) {
       $("title").html(s[1]+" - module player for Web Audio");
-      window.history.pushState("object of string", "Title", "/"+s[0]+"/"+s[1]);
+      if (window.location.protocol !== "file:")
+        window.history.pushState("object of string", "Title", "/"+s[0]+"/"+s[1]);
     } else {
       $("title").html(s[0]+" - module player for Web Audio");
-      window.history.pushState("object of string", "Title", "/"+s[0]);
+      if (window.location.protocol !== "file:")
+        window.history.pushState("object of string", "Title", "/"+s[0]);
     }
 
     if (window.playlistActive) {
@@ -373,7 +375,7 @@ $(document).ready(function() {
     }
 
     var pd="";
-    for(p=0;p<this.patterns;p++) {
+    for(p=0;p<this.songlen;p++) {
       var pp, pdata;
       pd+="<div class=\"patterndata\" id=\"pattern"+hb(p)+"\">";
       for(i=0; i<12; i++) pd+="\n";
@@ -507,6 +509,7 @@ $(document).ready(function() {
     $("#modfile").focus();
     var s=document.getElementById("modfile");
     var i=s.selectedIndex;
+    if (!s[i]) return;
     s[i].selected=false;
     s[(i<(s.length-12))?(i+12):(s.length-1)].selected=true;
     s[i].selected=true;
