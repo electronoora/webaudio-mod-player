@@ -234,6 +234,9 @@ Fasttracker.prototype.initialize = function()
     this.channel[i].currentsample=0.0;
     this.channel[i].lastsample=0.0;
     this.channel[i].oldfinalvolume=0.0;
+
+    this.channel[i].interactiveMute = false;
+    this.channel[i].interactiveVolume = 1.0;
   }
 }
 
@@ -893,8 +896,10 @@ Fasttracker.prototype.mix = function(mod, bufs, buflen) {
           fr=fl*f;
           fl*=1.0-f;
         }
-        outp[0]+=fl;
-        outp[1]+=fr;
+        if (!mod.channel[ch].interactiveMute && mod.channel[ch].interactiveVolume > 0) {
+            outp[0]+=fl*mod.channel[ch].interactiveVolume;
+            outp[1]+=fr*mod.channel[ch].interactiveVolume;
+        }
 
         // advance sample position and check for loop or end
         var oldpos=mod.channel[ch].samplepos;
