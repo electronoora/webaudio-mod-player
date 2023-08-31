@@ -36,6 +36,7 @@ function Modplayer()
   this.delayload=0;
 
   this.onReady=function(){};
+  this.onFailure=function(failureType){};
   this.onPlay=function(){};
   this.onStop=function(){};
 
@@ -73,6 +74,7 @@ Modplayer.prototype.load = function(url)
     ext=url.split('/').pop().split('.').shift().toLowerCase().trim();
     if (this.supportedformats.indexOf(ext)==-1) {
       // ok, give up
+      this.onFailure("filetype");
       return false;
     }
   }
@@ -102,7 +104,18 @@ Modplayer.prototype.load = function(url)
   request.onprogress = function(oe) {
     asset.state="loading ("+Math.floor(100*oe.loaded/oe.total)+"%)..";
   };
+  request.onerror = function() {
+    asset.state="error!";
+    asset.loading=false;
+    asset.onFailure("http");
+  }
   request.onload = function() {
+    if (request.status < 200 || request.status > 299) {
+      asset.state="error!";
+      asset.loading=false;
+      asset.onFailure("http");
+      return;
+    }
     var buffer=new Uint8Array(request.response);
     this.state="parsing..";
     if (asset.player.parse(buffer)) {
@@ -130,6 +143,7 @@ Modplayer.prototype.load = function(url)
     } else {
       asset.state="error!";
       asset.loading=false;
+      asset.onFailure("parser");
     }
   }
   request.send();
