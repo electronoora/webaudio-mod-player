@@ -163,6 +163,9 @@ Protracker.prototype.initialize = function()
     this.channel[i].vibratodepth=0
     this.channel[i].vibratopos=0;
     this.channel[i].vibratowave=0;
+
+    this.channel[i].interactiveMute = false;
+    this.channel[i].interactiveVolume = 1.0;
   }
 }
 
@@ -449,15 +452,17 @@ Protracker.prototype.mix = function(mod, bufs, buflen) {
         }
 
         // mix channel to output
-        och=och^(ch&1);
-        f=0.0;
-        if (mod.channel[ch].noteon) {
-          if (mod.sample[mod.channel[ch].sample].length > mod.channel[ch].samplepos)
-            f=(mod.sample[mod.channel[ch].sample].data[Math.floor(mod.channel[ch].samplepos)]*mod.channel[ch].volume)/64.0;
-          outp[och]+=f;
-          mod.channel[ch].samplepos+=mod.channel[ch].samplespeed;
+        if (!mod.channel[ch].interactiveMute && mod.channel[ch].interactiveVolume > 0) {
+            och=och^(ch&1);
+            f=0.0;
+            if (mod.channel[ch].noteon) {
+              if (mod.sample[mod.channel[ch].sample].length > mod.channel[ch].samplepos)
+                f=(mod.sample[mod.channel[ch].sample].data[Math.floor(mod.channel[ch].samplepos)]*mod.channel[ch].volume)/64.0*mod.channel[ch].interactiveVolume;
+              outp[och]+=f;
+              mod.channel[ch].samplepos+=mod.channel[ch].samplespeed;
+            }
+            mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(f));
         }
-        mod.chvu[ch]=Math.max(mod.chvu[ch], Math.abs(f));
 
         // loop or end samples
         if (mod.channel[ch].noteon) {

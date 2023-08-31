@@ -218,6 +218,9 @@ Screamtracker.prototype.initialize = function()
 
     this.channel[i].currentsample=0.0;
     this.channel[i].lastsample=0.0;
+
+    this.channel[i].interactiveMute = false;
+    this.channel[i].interactiveVolume = 1.0;
   }
 }
 
@@ -633,8 +636,10 @@ Screamtracker.prototype.mix = function(mod, bufs, buflen) {
           fr=fl*mod.pan_r[ch];
           fl*=mod.pan_l[ch];
         }
-        outp[0]+=fl;
-        outp[1]+=fr;
+        if (!mod.channel[ch].interactiveMute && mod.channel[ch].interactiveVolume > 0) {
+            outp[0]+=fl*mod.channel[ch].interactiveVolume;
+            outp[1]+=fr*mod.channel[ch].interactiveVolume;
+        }
 
         var oldpos=mod.channel[ch].samplepos;
         mod.channel[ch].samplepos+=mod.channel[ch].samplespeed;
