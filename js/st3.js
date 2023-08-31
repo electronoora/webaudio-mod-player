@@ -11,8 +11,10 @@
     command data memory?
 */
 
-function Screamtracker()
+function Screamtracker(songEventListener)
 {
+  this.songEventListener = songEventListener;
+
   var i, t;
 
   this.clearsong();
@@ -440,6 +442,7 @@ Screamtracker.prototype.advance = function(mod) {
         mod.row++; mod.tick=0; mod.flags|=2;
       }
     }
+    this.songEventListener.onSongRowChange?.();
   }
 
   // step to new pattern?
@@ -448,14 +451,17 @@ Screamtracker.prototype.advance = function(mod) {
     mod.row=0;
     mod.flags|=4;
     while (mod.patterntable[mod.position]==254) mod.position++; // skip markers
+    this.songEventListener.onSongPatternChange?.();
   }
 
   // end of song?
   if (mod.position>=mod.songlen || mod.patterntable[mod.position]==255) {
     if (mod.repeat) {
       mod.position=0;
+      this.songEventListener.onSongEnd?.(true);
     } else {
       this.endofsong=true;
+      this.songEventListener.onSongEnd?.(false);
     }
     return;
   }
@@ -547,6 +553,9 @@ Screamtracker.prototype.process_tick = function(mod) {
       if (!mod.tick) {
         // process only on tick 0 effects
         mod.effects_t0[mod.channel[ch].command](mod, ch);
+        if (this.songEventListener.onSongEffect && (mod.channel[ch].command > 0 || mod.channel[ch].data > 0)) {
+          this.songEventListener.onSongEffect(ch, mod.channel[ch].command, mod.channel[ch].data);
+        }
       } else {
         mod.effects_t1[mod.channel[ch].command](mod, ch);
       }

@@ -38,6 +38,10 @@ function Modplayer()
   this.onReady=function(){};
   this.onPlay=function(){};
   this.onStop=function(){};
+  this.onSongPatternChange = null;
+  this.onSongEnd = null; // params = isRepeating
+  this.onSongRowChange = null;
+  this.onSongEffect = null; // params = channel, command, command-data
 
   this.buffer=0;
   this.mixerNode=0;
@@ -80,13 +84,13 @@ Modplayer.prototype.load = function(url)
 
   switch (ext) {
     case 'mod':
-      this.player=new Protracker();
+      this.player=new Protracker(this);
       break;
     case 's3m':
-      this.player=new Screamtracker();
+      this.player=new Screamtracker(this);
       break;
     case 'xm':
-      this.player=new Fasttracker();
+      this.player=new Fasttracker(this);
       break;
   }
 

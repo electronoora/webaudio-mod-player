@@ -15,8 +15,10 @@
   Greets to Guru, Alfred and CCR for their work figuring out the .xm format. :)
 */
 
-function Fasttracker()
+function Fasttracker(songEventListener)
 {
+  this.songEventListener = songEventListener;
+
   var i, t;
 
   this.clearsong();
@@ -587,6 +589,7 @@ Fasttracker.prototype.advance = function(mod) {
         mod.row++; mod.tick=0; mod.flags|=2;
       }
     }
+    this.songEventListener.onSongRowChange?.();
   }
   
   // step to new pattern?
@@ -594,14 +597,17 @@ Fasttracker.prototype.advance = function(mod) {
     mod.position++;
     mod.row=0;
     mod.flags|=4;
+    this.songEventListener.onSongPatternChange?.();
   }
   
   // end of song?
   if (mod.position>=mod.songlen) {
     if (mod.repeat) {
       mod.position=0;
+      this.songEventListener.onSongEnd?.(true);
     } else {
       this.endofsong=true;
+      this.songEventListener.onSongEnd?.(false);
     }
     return;
   }
@@ -742,6 +748,9 @@ Fasttracker.prototype.process_tick = function(mod) {
       if (!mod.tick) {
         // process only on tick 0
         mod.effects_t0[mod.channel[ch].command](mod, ch);
+        if (this.songEventListener.onSongEffect && (mod.channel[ch].command > 0 || mod.channel[ch].data > 0)) {
+          this.songEventListener.onSongEffect(ch, mod.channel[ch].command, mod.channel[ch].data);
+        }
       } else {
         mod.effects_t1[mod.channel[ch].command](mod, ch);
       }

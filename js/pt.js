@@ -12,8 +12,10 @@
 */
 
 // constructor for protracker player object
-function Protracker()
+function Protracker(songEventListener)
 {
+  this.songEventListener = songEventListener;
+
   var i, t;
 
   this.clearsong();
@@ -350,14 +352,22 @@ Protracker.prototype.advance = function(mod) {
         mod.row++; mod.tick=0; mod.flags|=2;
       }
     }
+    this.songEventListener.onSongRowChange?.();
   }
-  if (mod.row>=64) { mod.position++; mod.row=0; mod.flags|=4; }
+  if (mod.row>=64) {
+    mod.position++;
+    mod.row=0;
+    mod.flags|=4;
+    this.songEventListener.onSongPatternChange?.();
+  }
   if (mod.position>=mod.songlen) {
     if (mod.repeat) {
       mod.position=0;
+      this.songEventListener.onSongEnd?.(true);
     } else {
       this.endofsong=true;
       //mod.stop();
+      this.songEventListener.onSongEnd?.(false);
     }
     return;
   }
@@ -423,6 +433,9 @@ Protracker.prototype.mix = function(mod, bufs, buflen) {
           if (!mod.tick) {
             // process only on tick 0
             mod.effects_t0[mod.channel[ch].command](mod, ch);
+            if (this.songEventListener.onSongEffect && (mod.channel[ch].command > 0 || mod.channel[ch].data > 0)) {
+              this.songEventListener.onSongEffect(ch, mod.channel[ch].command, mod.channel[ch].data);
+            }
           } else {
             mod.effects_t1[mod.channel[ch].command](mod, ch);
           }
