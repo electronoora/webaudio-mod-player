@@ -322,6 +322,7 @@ Protracker.prototype.advance = function(mod) {
   // advance player
   if (mod.offset>spd) { mod.tick++; mod.offset=0; mod.flags|=1; }
   if (mod.tick>=mod.speed) {
+
     if (mod.patterndelay) { // delay pattern
       if (mod.tick < ((mod.patternwait+1)*mod.speed)) {
         mod.patternwait++;
@@ -426,6 +427,7 @@ Protracker.prototype.mix = function(mod, bufs, buflen) {
 
         // kill empty samples
         if (!mod.sample[mod.channel[ch].sample].length) mod.channel[ch].noteon=0;
+
         // effects
         if (mod.flags&1) {
           if (!mod.tick) {
